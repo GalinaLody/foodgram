@@ -181,7 +181,7 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         # фомируем документа праграфами(текстом) и отступами
         story = []
         story.append(Paragraph('Список покупок', title_style))
-        story.append(Spacer(1, 0.5*inch))
+        story.append(Spacer(1, 0.5 * inch))
         for ingredient in full_text:
             story.append(Paragraph(ingredient, text_style))
             story.append(Spacer(1, 0.15 * inch))

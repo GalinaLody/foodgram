@@ -19,7 +19,7 @@ def check_username(value):
     incorrect_characters = re.sub(r'[\w.@+-]', '', value)
     if incorrect_characters != '':
         raise ValidationError(
-            f'Некорректные символы в имени пользователя:'
+            f'Некорректные символы в имени пользователя: '
             f'{str.join(' ', set(incorrect_characters))}.'
         )
 

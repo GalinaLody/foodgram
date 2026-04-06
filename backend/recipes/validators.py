@@ -13,7 +13,7 @@ def check_tag_slug(value):
     incorrect_characters = re.sub(r'^[-a-zA-Z0-9_]+$', '', value)
     if incorrect_characters != '':
         raise ValidationError(
-            f'Некорректные символы в slug тега:'
+            f'Некорректные символы в slug тега: '
             f'{str.join(' ', set(incorrect_characters))}.'
         )
 

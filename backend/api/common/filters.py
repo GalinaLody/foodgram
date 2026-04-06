@@ -1,5 +1,5 @@
+from django.db.models import Case, Q, When
 from rest_framework import filters
-from django.db.models import Q, Case, When
 
 
 class NameSearchFilterBackend(filters.BaseFilterBackend):

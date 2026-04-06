@@ -1,20 +1,18 @@
-from django.db import models
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 from django.utils.http import int_to_base36
 
 from core.constants import SLICE_OUTPUT_STR_METHOD
 from core.models import NameBaseModel
 from ingredients.models import Ingredient
-from .constants import (
-    TAG_NAME_MAX_LENGTH_CHARFIELD,
-    TAG_SLUG_MAX_LENGTH_SLUGFIELD,
-    RECIPE_MIN_COOKING_TIME,
-    RECIPE_MAX_COOKING_TIME,
-    RECIPE_NAME_MAX_LENGTH_CHARFIELD,
-    RECIPE_INGREDIENT_MIN_AMOUNT,
-    RECIPE_SHORT_LINK_MAX_LENGTH_CHARFIELD,
-)
+
+from .constants import (RECIPE_INGREDIENT_MIN_AMOUNT, RECIPE_MAX_COOKING_TIME,
+                        RECIPE_MIN_COOKING_TIME,
+                        RECIPE_NAME_MAX_LENGTH_CHARFIELD,
+                        RECIPE_SHORT_LINK_MAX_LENGTH_CHARFIELD,
+                        TAG_NAME_MAX_LENGTH_CHARFIELD,
+                        TAG_SLUG_MAX_LENGTH_SLUGFIELD)
 from .validators import check_tag_slug
 
 

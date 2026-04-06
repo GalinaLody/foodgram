@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from api.users.serializers import UserSerializer
 from ingredients.models import Ingredient
-from recipes.models import Tag, Recipe, RecipeIngredient
+from recipes.models import Recipe, RecipeIngredient, Tag
 
 
 class TagSerializer(serializers.ModelSerializer):

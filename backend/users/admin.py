@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User, Subscriptions
 from recipes.models import Recipe
+
+from .models import Subscriptions, User
 
 
 class SubscriptionsInline(admin.StackedInline):

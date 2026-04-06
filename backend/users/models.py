@@ -1,12 +1,10 @@
-from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 
 from core.constants import SLICE_OUTPUT_STR_METHOD
-from .constants import (
-    USER_MAX_LENGTH_CHARFIELD,
-    USER_MAX_LENGTH_EMAILFIELD,
-)
+
+from .constants import USER_MAX_LENGTH_CHARFIELD, USER_MAX_LENGTH_EMAILFIELD
 from .validators import check_username
 
 

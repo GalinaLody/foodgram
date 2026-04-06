@@ -1,31 +1,29 @@
 import io
+from pathlib import Path
+
 from django.conf import settings
 from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect
 from django_filters.rest_framework import DjangoFilterBackend
-from pathlib import Path
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
-from api.common.views import ListRetrieveViewSet, AddDeleteRelationMixin
 from api.common.permissions import IsAuthororOrReadOnly
+from api.common.views import AddDeleteRelationMixin, ListRetrieveViewSet
 from api.recipes.filters import RecipeFilter
-from api.recipes.serializers import (
-    TagSerializer, ReadRecipeSerializer,
-    WriteRecipeSerializer, ShortInfoRecipeSerializer
-)
-from recipes.models import (
-    Tag, Recipe, Favorite,
-    ShoppingCart, RecipeIngredient
-)
+from api.recipes.serializers import (ReadRecipeSerializer,
+                                     ShortInfoRecipeSerializer, TagSerializer,
+                                     WriteRecipeSerializer)
+from recipes.models import (Favorite, Recipe, RecipeIngredient, ShoppingCart,
+                            Tag)
 
 
 class TagtViewSet(ListRetrieveViewSet):

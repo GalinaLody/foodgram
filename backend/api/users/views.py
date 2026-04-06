@@ -1,3 +1,4 @@
+from api.common.views import AddDeleteRelationMixin
 from django.contrib.auth import get_user_model
 from djoser.permissions import CurrentUserOrAdmin
 from djoser.views import UserViewSet
@@ -6,8 +7,6 @@ from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
-from api.common.views import AddDeleteRelationMixin
 from users.models import Subscriptions
 
 from .serializers import AvatarSerializer, SubscribeSerializer

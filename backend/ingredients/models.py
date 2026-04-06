@@ -1,6 +1,5 @@
-from django.db import models
-
 from core.models import NameBaseModel
+from django.db import models
 
 from .constants import (INGREDIENTS_MEASUREMENT_UNIT_MAX_LENGTH_CHARFIELD,
                         INGREDIENTS_NAME_MAX_LENGTH_CHARFIELD)

@@ -1,7 +1,6 @@
+from core.constants import SLICE_OUTPUT_STR_METHOD
 from django.db import models
 from django.db.models.functions import Lower
-
-from core.constants import SLICE_OUTPUT_STR_METHOD
 
 
 class NameBaseModel(models.Model):

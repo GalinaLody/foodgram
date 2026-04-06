@@ -1,10 +1,9 @@
+from core.constants import SLICE_OUTPUT_STR_METHOD
+from core.models import NameBaseModel
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.http import int_to_base36
-
-from core.constants import SLICE_OUTPUT_STR_METHOD
-from core.models import NameBaseModel
 from ingredients.models import Ingredient
 
 from .constants import (RECIPE_INGREDIENT_MIN_AMOUNT, RECIPE_MAX_COOKING_TIME,

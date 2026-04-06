@@ -143,11 +143,11 @@ class RecipeIngredient(models.Model):
         on_delete=models.CASCADE
     )
     amount = models.PositiveIntegerField(
-       validators=(
+        validators=(
             MinValueValidator(
                 RECIPE_INGREDIENT_MIN_AMOUNT,
                 message=(
-                    f'Количество не может быть меньше'
+                    f'Количество не может быть меньше '
                     f'{RECIPE_INGREDIENT_MIN_AMOUNT} единицы измерения.'
                 )
             ),

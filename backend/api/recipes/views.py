@@ -103,7 +103,9 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         получить поля is_favorited,is_in_shopping_cart и добавить в ответ."""
 
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=True
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         queryset = self.get_queryset()

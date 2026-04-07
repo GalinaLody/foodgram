@@ -61,7 +61,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'foodgram.wsgi.application'
 
-USE_DB_SQLITE = (os.getenv('USE_DB_SQLITE', 'False'))
+USE_DB_SQLITE = (os.getenv('USE_DB_SQLITE', 'False')).lower() == 'true'
 
 if USE_DB_SQLITE:
     DATABASES = {

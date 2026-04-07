@@ -125,7 +125,7 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         """Метод возвращает короткую ссылку для рецепта."""
         recipe = self.get_object()
         short_link = recipe.create_short_link()
-        full_link = f'/s/{short_link}'
+        full_link = f'/s/{short_link}/'
         return Response({'short-link': request.build_absolute_uri(full_link)})
 
     @action(

@@ -7,7 +7,7 @@ from django.urls import include, path
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
-    path('s/<str:short_link>', redirect_to_recipe_url, name='redierct')
+    path('s/<str:short_link>/', redirect_to_recipe_url, name='redierct')
 ]
 
 

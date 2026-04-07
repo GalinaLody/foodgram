@@ -141,3 +141,5 @@ DJOSER = {
     },
     "HIDE_USERS": False
 }
+
+CSRF_TRUSTED_ORIGINS = [(os.getenv('CSRF'))]

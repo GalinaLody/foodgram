@@ -21,7 +21,6 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 
@@ -61,7 +60,6 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,
                        filters.OrderingFilter)
     filterset_class = RecipeFilter
-    pagination_class = LimitOffsetPagination
     ordering_fields = ('pub_date',)
     ordering = ('-pub_date',)
 
@@ -157,7 +155,11 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         ]
         # прописываем путь, где лежат шрифты и регистрируем их.
         font_path = (
-            Path(settings.BASE_DIR) / 'static' / 'fonts' / 'DejaVuSans.ttf'
+            Path(settings.BASE_DIR)
+            / 'api'
+            / 'recipes'
+            / 'fonts'
+            / 'DejaVuSans.ttf'
         )
         pdfmetrics.registerFont(TTFont('DejaVuSans', str(font_path)))
         # создаем буфер и документ по готовому шаблону
@@ -241,4 +243,4 @@ def redirect_to_recipe_url(request, short_link: str):
     """При получении короткой ссылки рецепта перенаправляет пользователя
     на страницу рецепта."""
     recipe = get_object_or_404(Recipe, short_link=short_link)
-    return redirect(recipe)
+    return redirect(f'/recipes/{recipe.id}')

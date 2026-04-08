@@ -154,13 +154,7 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
             for ingredient in ingredients
         ]
         # прописываем путь, где лежат шрифты и регистрируем их.
-        font_path = (
-            Path(settings.BASE_DIR)
-            / 'api'
-            / 'recipes'
-            / 'fonts'
-            / 'DejaVuSans.ttf'
-        )
+        font_path = Path(__file__).parent / 'fonts' / 'DejaVuSans.ttf'
         pdfmetrics.registerFont(TTFont('DejaVuSans', str(font_path)))
         # создаем буфер и документ по готовому шаблону
         buffer = io.BytesIO()

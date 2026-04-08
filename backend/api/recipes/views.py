@@ -67,10 +67,10 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         а также вычисляются два дополнительных поля
         is_favorited и  is_in_shopping_cart."""
         recipe_queryset = Recipe.objects.all().select_related(
-                'author'
-            ).prefetch_related(
-                'ingredients', 'tags'
-            )
+            'author'
+        ).prefetch_related(
+            'ingredients', 'tags'
+        )
         if self.request.user.is_authenticated:
             favorites = Favorite.objects.filter(
                 recipe=OuterRef('pk'), user=self.request.user

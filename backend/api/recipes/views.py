@@ -66,16 +66,23 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         """Получает QuerySet с привязкой объектов из связных моделей,
         а также вычисляются два дополнительных поля
         is_favorited и  is_in_shopping_cart."""
-        favorites = Favorite.objects.filter(recipe=OuterRef('pk'))
-        shopping_carts = ShoppingCart.objects.filter(recipe=OuterRef('pk'))
-        return Recipe.objects.all().select_related(
-            'author'
-        ).prefetch_related(
-            'ingredients', 'tags'
-        ).annotate(
-            is_favorited=Exists(favorites),
-            is_in_shopping_cart=Exists(shopping_carts)
-        )
+        recipe_queryset = Recipe.objects.all().select_related(
+                'author'
+            ).prefetch_related(
+                'ingredients', 'tags'
+            )
+        if self.request.user.is_authenticated:
+            favorites = Favorite.objects.filter(
+                recipe=OuterRef('pk'), user=self.request.user
+            )
+            shopping_carts = ShoppingCart.objects.filter(
+                recipe=OuterRef('pk'), user=self.request.user
+            )
+            return recipe_queryset.annotate(
+                is_favorited=Exists(favorites),
+                is_in_shopping_cart=Exists(shopping_carts)
+            )
+        return recipe_queryset
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):

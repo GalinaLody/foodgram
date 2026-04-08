@@ -40,8 +40,8 @@ class RecipeAdmin(admin.ModelAdmin):
         'short_link', 'recipes_count_in_favorites'
     )
     search_fields = (
-        'author__username', 'name', 'ingredients__name',
-        'tags__name', 'cooking_time_display_min'
+        'author__username', 'name',
+        'ingredients__name', 'tags__name'
     )
     list_filter = ('author', 'name', 'ingredients', 'tags', 'cooking_time')
     list_display_links = ('author', 'name')

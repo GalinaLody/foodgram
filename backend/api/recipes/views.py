@@ -241,4 +241,4 @@ def redirect_to_recipe_url(request, short_link: str):
     """При получении короткой ссылки рецепта перенаправляет пользователя
     на страницу рецепта."""
     recipe = get_object_or_404(Recipe, short_link=short_link)
-    return redirect(f'recipes/{recipe.id}')
+    return redirect(recipe)

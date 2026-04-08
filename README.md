@@ -2,8 +2,6 @@
 
 Foodgram - это проект в формате сайта рецептов с элементами соцальной сети, в которой пользователь может публиковать свои рецепты, добавлять чужие рецепты в избранное и подписываться на публикации других авторов. Зарегистрированным пользователям также доступен сервис «Список покупок». Он позволяет создавать список продуктов, которые нужно купить для приготовления выбранных блюд. Backend проекта основан на Rest API. Frontend проекта использует React.
 
-# api_foodgram
-api foodgram
 
 ## Технологический стек проекта.
 - Python 3.12  
@@ -11,8 +9,12 @@ api foodgram
 - Django REST Framework (DRF)
 - POSTGRESQL 
 - REST API 
+- Gunicorn 
+- Nginx 
+- Docker 
+- Docker Compose
 
-## Установка API Foodgram.
+## Как запустить проект.
 
 Необходимо клонировать репозиторий и перейти в него в командной строке:
 
@@ -22,44 +24,38 @@ git@github.com:GalinaLody/foodgram.git
 ```
 cd fodgram
 ```
-Cоздать и активировать виртуальное окружение:
+Cоздать переменные окружения .env на основании .env.example:
 
 ```
-python -m venv env
-```
-* Если у вас Linux/macOS
-
-    ```
-    source env/bin/activate
-    ```
-
-* Если у вас windows
-
-    ```
-    source env/scripts/activate
-    ```
-
-Установить зависимости из файла requirements.txt:
-
-```
-python -m pip install --upgrade pip
+cp .env.example .env
 ```
 
+Собирать образы и запустить контейнеры:
+
 ```
-pip install -r requirements.txt
+docker compose up --build -d
 ```
 
 Выполнить миграции:
 
 ```
-python manage.py migrate
+docker compose exec backend python manage.py migrate
 ```
 
-Запустить проект:
+Собрать статику:
 
 ```
-python manage.py runserver
+docker compose exec backend python manage.py collectstatic
+
+docker compose exec backend cp -r /app collected_static/. /backend_static/static/
 ```
+
+Загрузить базу ингредиентов и тегов:
+
+```
+docker compose exec backend python manage.py load_data
+```
+
 ## Примеры запросов к API Foodgram.
 
 Запросы к API Foodgram могут быть отправлены на следующие эндпоинты:
@@ -142,9 +138,35 @@ python manage.py runserver
 "cooking_time": 1
 }
 ```
+## Деплой на сервер.
+
+Прописать GitHub Secrets:
+ - SSH_KEY
+ - USER
+ - HOST
+ - DOCKER_USERNAME
+ - DOCKER_PASSWORD
+ - TELEGRAM_ID
+ - TELEGRAM_TOKEN
+
+Создать .env на сервере.
+Скопировать на сервер файл docker-compose.yml. Из директории с
+файлом docker-compose.yml выполнить команду:
+
+```
+scp -i path_to SSH/SSH_name docker-compose.yml username@server_ip:/home/username/docker-compose.yml
+```
+Загрузить на GitHub в главную ветку:
+
+```
+git pull
+```
+При пуше в main запускается workflows, проверяется линтинг
+собираются Docker-образы, деплоится на сервер по SSH
 
 
-Автор Галина Лодыгина, Данил Демура
+
+Автор Галина Лодыгина
 email: Zolotova-87-gali@yandex.ru
 
 

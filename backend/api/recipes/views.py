@@ -7,7 +7,6 @@ from api.recipes.filters import RecipeFilter
 from api.recipes.serializers import (ReadRecipeSerializer,
                                      ShortInfoRecipeSerializer, TagSerializer,
                                      WriteRecipeSerializer)
-from django.conf import settings
 from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect

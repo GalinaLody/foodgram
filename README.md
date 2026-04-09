@@ -19,9 +19,8 @@ Foodgram - это проект в формате сайта рецептов с 
 Необходимо клонировать репозиторий и перейти в него в командной строке:
 
 ```
-git@github.com:GalinaLody/foodgram.git
-```
-```
+git clone git@github.com:GalinaLody/foodgram.git
+
 cd fodgram
 ```
 Cоздать переменные окружения .env на основании .env.example:
@@ -164,9 +163,13 @@ git pull
 При пуше в main запускается workflows, проверяется линтинг
 собираются Docker-образы, деплоится на сервер по SSH
 
+## Доступы.
+
+1.[Сервер](https://foodgram.serveirc.com/);
+2.[Админка](https://foodgram.serveirc.com/admin/);
+[API-документация]()
 
 
-Автор Галина Лодыгина
-email: Zolotova-87-gali@yandex.ru
+[Автор: Галина Лодыгина](Zolotova-87-gali@yandex.ru)
 
 

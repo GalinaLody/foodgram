@@ -4,7 +4,7 @@ from django.db.models import Count
 from django.utils.safestring import mark_safe
 
 from recipes.models import Recipe
-from .models import Subscriptions, User
+from users.models import Subscriptions, User
 
 
 class IsRelationFilter(admin.SimpleListFilter):

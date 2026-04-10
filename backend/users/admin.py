@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
 from django.utils.safestring import mark_safe
-
 from recipes.models import Recipe
+
 from users.models import Subscriptions, User
 
 

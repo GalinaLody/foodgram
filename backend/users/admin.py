@@ -138,7 +138,7 @@ class UserAdmin(UserAdmin):
     @admin.display(description='Количество подписавшихся(followers)')
     def followers_count(self, user):
         """Отображение количества подписок на пользователя."""
-        return user.fcount_followers
+        return user.count_followers
 
     @admin.display(description="Полное имя")
     def full_name(self, user):

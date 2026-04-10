@@ -157,7 +157,7 @@ class UserAdmin(UserAdmin):
                 f'style="{style}" />'
             )
         return 'Аватар не загружен'
-    
+
     post_avatar.short_description = 'Аватар'
 
 

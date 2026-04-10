@@ -150,9 +150,10 @@ class UserAdmin(UserAdmin):
         object-fit: cover - сохраняет пропорции картинки,
         border-radius: 50%; - скругляет углы."""
         if user.avatar:
+            style = 'object-fit: cover; border-radius: 50%;'  # noqa: E702
             return (
-                f'<img src="{user.image.url}" height="50" width="50"'
-                f'style="object-fit: cover; border-radius: 50%; " />'
+                f'<img src="{user.avatar.url}" height="50" width="50"'
+                f'style="{style}" />'
             )
         return 'Аватар не загружен'
 

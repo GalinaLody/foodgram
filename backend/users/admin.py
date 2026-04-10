@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 from recipes.models import Recipe
 from users.models import Subscriptions, User
 
@@ -150,9 +151,8 @@ class UserAdmin(UserAdmin):
         border-radius: 50%; - скругляет углы."""
         if user.avatar:
             return (
-                f'<img src="{user.image.url}"'
-                f'height="50" width="50"'
-                f'style="object-fit: cover; border-radius: 50%;" />'
+                f'<img src="{user.image.url}" height="50" width="50"'
+                f'style="object-fit: cover; border-radius: 50%; " />'
             )
         return 'Аватар не загружен'
 

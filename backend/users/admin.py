@@ -94,7 +94,8 @@ class UserAdmin(UserAdmin):
         'full_name',
         'email',
         'recipes_count',
-        'following_count'
+        'following_count',
+        'followers_count'
     )
     search_fields = (
         'username',
@@ -144,7 +145,7 @@ class UserAdmin(UserAdmin):
         """Отображает ФИО: irst_name+last_name."""
         return f'{user.first_name} {user.last_name}'.upper()
 
-    @mark_safe(description='Аватар')
+    @mark_safe
     def post_avatar(self, user):
         """Отображает аватар как картинку,
         object-fit: cover - сохраняет пропорции картинки,
@@ -152,10 +153,12 @@ class UserAdmin(UserAdmin):
         if user.avatar:
             style = 'object-fit: cover; border-radius: 50%;'  # noqa: E702
             return (
-                f'<img src="{user.avatar.url}" height="50" width="50"'
+                f'<img src="{user.avatar.url}" height="50" width="50" '
                 f'style="{style}" />'
             )
         return 'Аватар не загружен'
+    
+    post_avatar.short_description = 'Аватар'
 
 
 @admin.register(Subscriptions)

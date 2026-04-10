@@ -1,8 +1,48 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from recipes.models import Recipe
+from django.db.models import Count
+from django.utils.safestring import mark_safe
 
+from recipes.models import Recipe
 from .models import Subscriptions, User
+
+
+class IsRelationFilter(admin.SimpleListFilter):
+    """Базовый фильтр о наличии/отсутствии у пользователя связей."""
+
+    def lookups(self, request, model_admin):
+        return (
+            ('y', _('есть')),
+            ('n', _('нет'))
+        )
+
+    def queryset(self, request, queryset):
+        condition = {f'{self.related_name}__isnull': False}
+        if self.value() == 'y':
+            return queryset.filter(**condition)
+        if self.value() == 'n':
+            return queryset.exclude(**condition)
+
+
+class IsResipeListFilter(IsRelationFilter):
+    """Кастомный фильтр по наличию/отсутствию рецептов у пользователя."""
+    title = _('Наличие рецептов')
+    parameter_name = 'is_recipes'
+    related_name = 'recipes'
+
+
+class IsFollowingListFilter(IsRelationFilter):
+    """Кастомный фильтр по наличию/отсутствию подписок у пользователя."""
+    title = _('Наличие подписок')
+    parameter_name = 'is_following'
+    related_name = 'subscriptions'
+
+
+class IsFollowersListFilter(IsRelationFilter):
+    """Кастомный фильтр по наличию/отсутствию подписавшихся на пользователя."""
+    title = _('Наличие подписчиков')
+    parameter_name = 'is_followers'
+    related_name = 'follower_subscriptions'
 
 
 class SubscriptionsInline(admin.StackedInline):
@@ -38,7 +78,7 @@ class UserAdmin(UserAdmin):
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
             'first_name', 'last_name',
-            'email', 'avatar'
+            'email', 'post_avatar'
         )}),
         ('Статус пользователя', {'fields': (
             'is_superuser', 'is_staff', 'is_active'
@@ -48,12 +88,13 @@ class UserAdmin(UserAdmin):
         )}),
     )
     list_display = (
+        'id',
+        'post_avatar',
         'username',
+        'full_name',
         'email',
-        'first_name',
-        'last_name',
-        'avatar',
-        'recipes_count'
+        'recipes_count',
+        'following_count'
     )
     search_fields = (
         'username',
@@ -66,19 +107,60 @@ class UserAdmin(UserAdmin):
         'email'
     )
     list_editatable = ('password',)
+    list_filter = (
+        IsResipeListFilter,
+        IsFollowingListFilter,
+        IsFollowersListFilter
+    )
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
-    readonly_fields = ('recipes_count',)
+    readonly_fields = ('recipes_count', 'following_count', 'followers_count')
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.annotate(
+            count_recipes=Count('recipes'),
+            count_following=Count('subscriptions'),
+            count_followers=Count('follower_subscriptions')
+        )
 
     @admin.display(description='Количество рецептов')
-    def recipes_count(self, obj):
-        """Отображение количество рецептов пользователя в списке."""
-        return obj.recipes.count()
+    def recipes_count(self, user):
+        """Отображение количество рецептов пользователя."""
+        return user.count_recipes
+
+    @admin.display(description='Количество подписчиков(following)')
+    def following_count(self, user):
+        """Отображение количества подписчиков пользователя."""
+        return user.count_following
+
+    @admin.display(description='Количество подписавшихся(followers)')
+    def followers_count(self, user):
+        """Отображение количества подписок на пользователя."""
+        return user.fcount_followers
+
+    @admin.display(description="Полное имя")
+    def full_name(self, user):
+        """Отображает ФИО: irst_name+last_name."""
+        return f'{user.first_name} {user.last_name}'.upper()
+
+    @mark_safe(description='Аватар')
+    def post_avatar(self, user):
+        """Отображает аватар как картинку,
+        object-fit: cover - сохраняет пропорции картинки,
+        border-radius: 50%; - скругляет углы."""
+        if user.avatar:
+            return (
+                f'<img src="{user.image.url}"'
+                f'height="50" width="50"'
+                f'style="object-fit: cover; border-radius: 50%;" />'
+            )
+        return 'Аватар не загружен'
 
 
 @admin.register(Subscriptions)
 class SubscriptionsAdmin(admin.ModelAdmin):
-    list_display = ('user', 'following')
+    list_display = ('id', 'user', 'following')
     search_fields = ('user', 'following')
     list_filter = ('user', 'following')
     list_display_links = ('user', 'following')

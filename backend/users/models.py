@@ -26,7 +26,7 @@ class User(AbstractUser):
         blank=False,
         unique=True,
         validators=(check_username,),
-        verbose_name='Имя пользователя'
+        verbose_name='Никнейм'
     )
     first_name = models.CharField(
         max_length=USER_MAX_LENGTH_CHARFIELD,
@@ -54,15 +54,6 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     class Meta:
-        constraints = (
-            models.UniqueConstraint(
-                fields=('username', 'email'),
-                name='unique_user',
-                violation_error_message=(
-                    'Пользователь с таким username и email существует.'
-                )
-            ),
-        )
         ordering = ('username',)
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
@@ -89,7 +80,7 @@ class Subscriptions(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name='На кого подписан',
-        related_name='followers'
+        related_name='follower_subscriptions'
     )
 
     class Meta:

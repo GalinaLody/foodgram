@@ -1,9 +1,9 @@
 import re
-
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 
-def check_username(value):
+def check_username(username):
     """Валидирует значение поля username модели User
 
     Проверяет поле username в модели User
@@ -11,16 +11,13 @@ def check_username(value):
     и исключает значение 'me' как допустимое значение поля username.
     """
 
-    if value == 'me':
-        raise ValidationError(
-            'Использовать имя me в качестве username запрещено.'
-        )
-
-    incorrect_characters = re.sub(r'[\w.@+-]', '', value)
-    if incorrect_characters != '':
+    incorrect_characters = re.sub(
+        settings.USERNAME_ALLOWED_SIGNS, '', username
+    )
+    if incorrect_characters:
         raise ValidationError(
             f'Некорректные символы в имени пользователя: '
-            f'{str.join(" ", set(incorrect_characters))}.'
+            f'{", ".join(set(incorrect_characters))}.'
         )
 
-    return value
+    return username

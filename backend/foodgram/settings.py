@@ -144,4 +144,3 @@ DJOSER = {
 CSRF_TRUSTED_ORIGINS = [(os.getenv('CSRF'))]
 
 USERNAME_ALLOWED_SIGNS = r'[\w.@+-]'
-

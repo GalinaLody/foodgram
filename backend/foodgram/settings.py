@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'test-secret-key')
 
-DEBUG = os.getenv('DEBAG', 'False')
+DEBUG = os.getenv('DEBUG', 'False')
 
 ALLOWED_HOSTS = (os.getenv('ALLOWED_HOSTS', '')).split(',')
 
@@ -24,11 +24,11 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework.authtoken',
     'djoser',
-    'api.apps.ApiConfig',
     'core.apps.CoreConfig',
     'users.apps.UsersConfig',
     'ingredients.apps.IngredientsConfig',
     'recipes.apps.RecipesConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -138,7 +138,10 @@ DJOSER = {
         'user': 'api.users.serializers.UserSerializer',
         'current_user': 'api.users.serializers.UserSerializer',
     },
-    "HIDE_USERS": False
+    'HIDE_USERS': False
 }
 
 CSRF_TRUSTED_ORIGINS = [(os.getenv('CSRF'))]
+
+USERNAME_ALLOWED_SIGNS = r'[\w.@+-]'
+

@@ -14,22 +14,77 @@ Foodgram - это проект в формате сайта рецептов с 
 - Docker 
 - Docker Compose
 
-## Как запустить проект.
+## Как запустить проект локально в контенерах.
+
 
 Необходимо клонировать репозиторий и перейти в него в командной строке:
 
 ```
 git clone git@github.com:GalinaLody/foodgram.git
 
-cd fodgram
+cd foodgram
 ```
 Cоздать переменные окружения .env на основании .env.example:
 
 ```
 cp .env.example .env
 ```
+## Как запустить проект локально.
 
-Собирать образы и запустить контейнеры:
+Работа с backend.
+
+Перйти в директорю backend, создать и активировать виртуальное окружение:
+
+```
+cd backend
+
+python -m venv venv
+
+source venv/Scripts/activate
+```
+Обновить pip, установить зависимости backend, применить миграции, создать суперпользователя:
+
+```
+pip install --upgrade pip
+
+pip install -r requirements.txt
+
+python manage.py migrate
+
+python manage.py createsuperuser
+```
+
+Запустить веб-сервер разработки:
+
+```
+python manage.py runserver 0:8000
+```
+
+Работа с frontend 
+
+Если не установлено установить Node.js с nodejs.org
+
+Открыть новый терминал, перейти в директорию frontend и установить зависимости:
+
+```
+cd ../frontend
+
+npm i
+```
+
+Запустить frontend-приложение:
+
+```
+npm run start
+```
+
+После запуска открыть http://localhost:3000 в браузере.
+
+
+## Как запустить проект локально в контейнерах.
+
+Ввыполнить команды в директории foodgram(по месту нахождения файла docker-compose.yml)
+Собрать образы и запустить контейнеры:
 
 ```
 docker compose up --build -d
@@ -149,8 +204,8 @@ docker compose exec backend python manage.py load_data
  - TELEGRAM_TOKEN
 
 Создать .env на сервере.
-Скопировать на сервер файл docker-compose.yml. Из директории с
-файлом docker-compose.yml выполнить команду:
+Скопировать на сервер файл docker-compose.yml.
+Из директории с файлом docker-compose.yml выполнить команду:
 
 ```
 scp -i path_to SSH/SSH_name docker-compose.yml username@server_ip:/home/username/docker-compose.yml
@@ -165,11 +220,9 @@ git pull
 
 ## Доступы.
 
-1.[Сервер](https://foodgram.serveirc.com/);
-2.[Админка](https://foodgram.serveirc.com/admin/);
-[API-документация]()
+[Сервер](https://foodgram.serveirc.com/);
+[Админка](https://foodgram.serveirc.com/admin/);
+[API-документация](https://foodgram.serveirc.com/api/docs/).
 
 
 [Автор: Галина Лодыгина](Zolotova-87-gali@yandex.ru)
-
-

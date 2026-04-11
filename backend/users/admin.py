@@ -123,9 +123,9 @@ class UserAdmin(UserAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.annotate(
-            count_recipes=Count('recipes'),
-            count_following=Count('subscriptions'),
-            count_followers=Count('follower_subscriptions')
+            count_recipes=Count('recipes', distinct=True),
+            count_following=Count('subscriptions', distinct=True),
+            count_followers=Count('follower_subscriptions', distinct=True)
         )
 
     @admin.display(description='Количество рецептов')

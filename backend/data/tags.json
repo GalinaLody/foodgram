@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Завтрак",
+    "slug": "breakfast"
+  },
+  {
+    "name": "Обед",
+    "slug": "lunch"
+  },
+  {
+    "name": "Ужин",
+    "slug": "dinner"
+  },
+  {
+    "name": "Перекус",
+    "slug": "snack"
+  },
+  {
+    "name": "Десерт",
+    "slug": "dessert"
+  },
+  {
+    "name": "Выпечка",
+    "slug": "bakery"
+  },
+  {
+    "name": "Суп",
+    "slug": "soup"
+  },
+  {
+    "name": "Салат",
+    "slug": "salad"
+  },
+  {
+    "name": "Напитки",
+    "slug": "drinks"
+  },
+  {
+    "name": "Праздничное",
+    "slug": "holiday"
+  },
+  {
+    "name": "Детское",
+    "slug": "for-kids"
+  },
+  {
+    "name": "Итальянская кухня",
+    "slug": "italian"
+  },
+  {
+    "name": "Домашнее",
+    "slug": "homemade"
+  }
+]

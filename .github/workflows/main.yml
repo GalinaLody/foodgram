@@ -134,7 +134,8 @@ jobs:
             sudo docker compose exec backend python manage.py migrate
             sudo docker compose exec backend python manage.py collectstatic
             sudo docker compose exec backend cp -r /app/collected_static/. /backend_static/static/
-            sudo docker compose exec backend python manage.py load_data
+            sudo docker compose exec backend python manage.py load_ingredients
+            sudo docker compose exec backend python manage.py load_tags
   
   send_message:
     if: github.ref == 'refs/heads/main'

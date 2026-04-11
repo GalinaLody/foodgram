@@ -1,11 +1,12 @@
-from core.models import NameBaseModel
+from core.constants import SLICE_OUTPUT_STR_METHOD
 from django.db import models
+from django.db.models.functions import Lower
 
 from .constants import (INGREDIENTS_MEASUREMENT_UNIT_MAX_LENGTH_CHARFIELD,
                         INGREDIENTS_NAME_MAX_LENGTH_CHARFIELD)
 
 
-class Ingredient(NameBaseModel):
+class Ingredient(models.Model):
     """Описывает модель Ингредиенты.
 
     Модель наследует от базовой модели NameBaseModel сортировку по name,
@@ -26,8 +27,18 @@ class Ingredient(NameBaseModel):
         max_length=INGREDIENTS_MEASUREMENT_UNIT_MAX_LENGTH_CHARFIELD,
         verbose_name='Единица измерения'
     )
-    is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+        ordering = ('name',)
+        constraints = (
+            models.UniqueConstraint(
+                Lower('name'),
+                name='%(app_label)s_%(class)s_unique_name',
+                violation_error_message='Такой объект уже существует.'
+            ),
+        )
+
+        def __str__(self):
+            return self.name[:SLICE_OUTPUT_STR_METHOD]

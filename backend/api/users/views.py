@@ -73,7 +73,7 @@ class MyUserViewSet(AddDeleteRelationMixin, UserViewSet):
         """Выводит список подписок текущего пользователя
         по эндпоинту /subscriptions."""
         current_user = request.user
-        obj = User.objects.filter(followers__user=current_user)
+        obj = User.objects.filter(follower_subscriptions__user=current_user)
         page = self.paginate_queryset(obj)
         serializer = SubscribeSerializer(
             page, many=True,

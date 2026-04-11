@@ -17,5 +17,5 @@ class IngredientViewSet(ListRetrieveViewSet):
     """
 
     serializer_class = IngredientSerializer
-    queryset = Ingredient.objects.filter(is_active=True)
+    queryset = Ingredient.objects.all()
     pagination_class = None

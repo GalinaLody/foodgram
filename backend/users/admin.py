@@ -115,7 +115,10 @@ class UserAdmin(UserAdmin):
     )
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
-    readonly_fields = ('recipes_count', 'following_count', 'followers_count', 'post_avatar')
+    readonly_fields = (
+        'recipes_count', 'following_count',
+        'followers_count', 'post_avatar'
+    )
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)

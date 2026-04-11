@@ -42,7 +42,7 @@ class Tag(models.Model):
                 violation_error_message='Такой объект уже существует.'
             ),
         )
-    
+
     def __str__(self):
         return self.name[:SLICE_OUTPUT_STR_METHOD]
 

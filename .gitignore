@@ -142,3 +142,4 @@ static/
 media/
 
 docker-compose.local.yml
+.env.local

@@ -42,6 +42,9 @@ class Tag(models.Model):
                 violation_error_message='Такой объект уже существует.'
             ),
         )
+    
+    def __str__(self):
+        return self.name[:SLICE_OUTPUT_STR_METHOD]
 
 
 class Recipe(models.Model):
@@ -124,12 +127,15 @@ class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
+        verbose_name='Рецепт'
     )
     ingredient = models.ForeignKey(
         Ingredient,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        verbose_name='Ингредиент'
     )
     amount = models.PositiveIntegerField(
+        verbose_name='Количество',
         validators=(
             MinValueValidator(
                 RECIPE_INGREDIENT_MIN_AMOUNT,

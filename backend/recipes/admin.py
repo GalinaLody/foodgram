@@ -117,9 +117,9 @@ class RecipeAdmin(admin.ModelAdmin):
     )
     list_filter = ('author', 'ingredients', 'tags', CookingTimeListFilter)
     list_display_links = ('author', 'name')
-    filter_horizontal = ('tags',)
+    filter_horizontal = ('tags__name',)
     ordering = ('name',)
-    readonly_fields = ('recipes_count_in_favorites',)
+    readonly_fields = ('recipes_count_in_favorites', 'post_image')
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)

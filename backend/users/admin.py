@@ -78,7 +78,7 @@ class UserAdmin(UserAdmin):
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
             'first_name', 'last_name',
-            'email', 'avatar'
+            'email', 'avatar', 'post_avatar'
         )}),
         ('Статус пользователя', {'fields': (
             'is_superuser', 'is_staff', 'is_active'
@@ -115,7 +115,7 @@ class UserAdmin(UserAdmin):
     )
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
-    readonly_fields = ('recipes_count', 'following_count', 'followers_count')
+    readonly_fields = ('recipes_count', 'following_count', 'followers_count', 'post_avatar')
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)

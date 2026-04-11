@@ -117,7 +117,7 @@ class RecipeAdmin(admin.ModelAdmin):
     )
     list_filter = ('author', 'ingredients', 'tags', CookingTimeListFilter)
     list_display_links = ('author', 'name')
-    filter_horizontal = ('tags__name',)
+    filter_horizontal = ('tags',)
     ordering = ('name',)
     readonly_fields = ('recipes_count_in_favorites', 'post_image')
 

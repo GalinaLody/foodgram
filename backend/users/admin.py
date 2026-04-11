@@ -60,15 +60,15 @@ class RecipeInline(admin.TabularInline):
     can_delete = True
 
     @admin.display(description='текст')
-    def short_text(self, obj):
+    def short_text(self, recipe):
         """Отображение текста рецепта в списке сокращенно."""
-        return obj.text[:50] + '...'
+        return recipe.text[:50] + '...'
 
     @admin.display(description='ингредиенты')
-    def get_ingredients(self, obj):
+    def get_ingredients(self, recipe):
         """Отображение ингредиентов в списке."""
         return ', '.join(
-            [ingredient.name for ingredient in obj.ingredients.all()]
+            [ingredient.name for ingredient in recipe.ingredients.all()]
         )
 
 
@@ -78,7 +78,7 @@ class UserAdmin(UserAdmin):
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
             'first_name', 'last_name',
-            'email', 'post_avatar'
+            'email', 'avatar'
         )}),
         ('Статус пользователя', {'fields': (
             'is_superuser', 'is_staff', 'is_active'
@@ -149,7 +149,7 @@ class UserAdmin(UserAdmin):
     def post_avatar(self, user):
         """Отображает аватар как картинку,
         object-fit: cover - сохраняет пропорции картинки,
-        border-radius: 50%; - скругляет углы."""
+        border-radius: 50%; - аватар в форме овала."""
         if user.avatar:
             style = 'object-fit: cover; border-radius: 50%;'  # noqa: E702
             return (

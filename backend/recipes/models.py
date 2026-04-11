@@ -1,21 +1,17 @@
 from core.constants import SLICE_OUTPUT_STR_METHOD
-from core.models import NameBaseModel
 from django.conf import settings
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MinValueValidator
 from django.db import models
-from django.utils.http import int_to_base36
+from django.db.models.functions import Lower
 from ingredients.models import Ingredient
 
-from .constants import (RECIPE_INGREDIENT_MIN_AMOUNT, RECIPE_MAX_COOKING_TIME,
-                        RECIPE_MIN_COOKING_TIME,
+from .constants import (RECIPE_INGREDIENT_MIN_AMOUNT, RECIPE_MIN_COOKING_TIME,
                         RECIPE_NAME_MAX_LENGTH_CHARFIELD,
-                        RECIPE_SHORT_LINK_MAX_LENGTH_CHARFIELD,
                         TAG_NAME_MAX_LENGTH_CHARFIELD,
                         TAG_SLUG_MAX_LENGTH_SLUGFIELD)
-from .validators import check_tag_slug
 
 
-class Tag(NameBaseModel):
+class Tag(models.Model):
     """Описывает модель Тега для рецепта.
 
     Поля name и slug уникальны и обязательны.
@@ -30,15 +26,22 @@ class Tag(NameBaseModel):
     )
     slug = models.SlugField(
         max_length=TAG_SLUG_MAX_LENGTH_SLUGFIELD,
-        verbose_name='Слаг',
+        verbose_name='Метка',
         unique=True,
         null=True,
-        validators=(check_tag_slug,)
     )
 
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
+        ordering = ('name',)
+        constraints = (
+            models.UniqueConstraint(
+                Lower('name'),
+                name='%(app_label)s_%(class)s_unique_name',
+                violation_error_message='Такой объект уже существует.'
+            ),
+        )
 
 
 class Recipe(models.Model):
@@ -84,21 +87,8 @@ class Recipe(models.Model):
                     f'{RECIPE_MIN_COOKING_TIME} минуты.'
                 )
             ),
-            MaxValueValidator(
-                RECIPE_MAX_COOKING_TIME,
-                message=(
-                    f'Время приготовления не ожет быть больше'
-                    f'{RECIPE_MAX_COOKING_TIME} минут.'
-                )
-            )
         ),
         verbose_name='Время приготовления (мин.)'
-    )
-    short_link = models.CharField(
-        max_length=RECIPE_SHORT_LINK_MAX_LENGTH_CHARFIELD,
-        null=True,
-        unique=True,
-        verbose_name='Короткая ссылка'
     )
     pub_date = models.DateTimeField(
         'Дата публикации',
@@ -111,15 +101,12 @@ class Recipe(models.Model):
         default_related_name = 'recipes'
         ordering = ('-pub_date',)
 
-    def create_short_link(self):
-        """Если короткой сслыки нет, кодирует id объекта в base36
-        и записывает в поле short_link, которое используется
-        для формирования короткой ссылки.
-        Если короткая ссылка уже записана, возвращает ее."""
-        if not self.short_link:
-            self.short_link = int_to_base36(self.id)
-            self.save(update_fields=['short_link'])
-        return self.short_link
+    @property
+    def cooking_time_display(self):
+        """Отображение время приготовления с минутами."""
+        return f'{self.cooking_time} мин'
+
+    cooking_time_display.fget.short_description = 'Время приготовления'
 
     def __str__(self):
         return self.name[:SLICE_OUTPUT_STR_METHOD]
@@ -160,7 +147,7 @@ class RecipeIngredient(models.Model):
         verbose_name_plural = 'Ингредиенты рецепта'
 
     def __str__(self):
-        return f'{self.recipe} {self.ingredient}'[:SLICE_OUTPUT_STR_METHOD]
+        return f'{self.recipe} {self.ingredient}'
 
 
 class UserRecipeBaseModel(models.Model):
@@ -179,6 +166,7 @@ class UserRecipeBaseModel(models.Model):
 
     class Meta:
         abstract = True
+        default_related_name = '%(class)ss'
         constraints = (
             models.UniqueConstraint(
                 fields=('user', 'recipe'),
@@ -204,7 +192,6 @@ class ShoppingCart(UserRecipeBaseModel):
     class Meta(UserRecipeBaseModel.Meta):
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
-        default_related_name = 'shopping_carts'
 
 
 class Favorite(UserRecipeBaseModel):
@@ -219,4 +206,3 @@ class Favorite(UserRecipeBaseModel):
     class Meta(UserRecipeBaseModel.Meta):
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные'
-        default_related_name = 'favorites'

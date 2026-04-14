@@ -1,4 +1,3 @@
-
 from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -163,7 +162,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
     def delete_relation(self, model, pk):
-        get_object_or_404(model, user=self.request.user, recipe_id=pk)
+        get_object_or_404(model, user=self.request.user, recipe_id=pk).delete()
         return Response(status=204)
 
     @action(

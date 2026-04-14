@@ -1,6 +1,6 @@
 Список покупок от {{ date }}
 
-{% for ingredient in ingredients %}{{ forloop.counter }}. {{ ingredient.ingredient__name|capfirst }} ({{ ingredient.ingredient__measurment_unit }}) — {{ ingredient.ingredient__total_amount }}
+{% for ingredient in ingredients %}{{ forloop.counter }}. {{ ingredient.ingredient__name|capfirst }} ({{ ingredient.ingredient__measurement_unit }}) — {{ ingredient.total_amount }}
 {% endfor %}
 
 Рецепты:

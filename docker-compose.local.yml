@@ -1,0 +1,22 @@
+services:
+  db:
+    env_file: .env.local
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    env_file: .env.local
+    volumes:
+      - static:/app/collected_static
+      - ./backend:/app  # локальный код монтируется в контейнер
+ 
+
+  frontend:
+    build: ./frontend
+    env_file: .env.local
+
+
+  gateway:
+    build: ./nginx_gateway
+    env_file: .env.local

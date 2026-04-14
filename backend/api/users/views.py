@@ -40,7 +40,7 @@ class FoodgramUserViewSet(DjoserUserViewSet):
         к /users/ и /users/id/ на 'доступно для всех'
         (было только для авторизованных)."""
         permissions = super().get_permissions()
-        if self.action == 'list' or self.action == 'retrieve':
+        if self.action in ('list', 'retrieve'):
             return (AllowAny(),)
         return permissions
 
@@ -62,8 +62,11 @@ class FoodgramUserViewSet(DjoserUserViewSet):
     def delete_avatar(self, request):
         """Удаляет аватар пользователя"""
         user = self.request.user
-        user.avatar.delete(save=True)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if user.avatar:
+            user.avatar.delete(save=True)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
     @action(
         detail=False,
@@ -98,10 +101,10 @@ class FoodgramUserViewSet(DjoserUserViewSet):
                     user_following,
                     context={'request': self.request}
                 ).data,
-                status=201
+                status=status.HTTP_201_CREATED
             )
         except IntegrityError:
-            return Response(status=400)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
     @subscribe.mapping.delete
     def delete_subscribe(self, request, id):
@@ -112,5 +115,5 @@ class FoodgramUserViewSet(DjoserUserViewSet):
             user=user, following_id=id
         ).delete()
         if deleted_count == 0:
-            return Response(status=400)
-        return Response(status=204)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_201_CREATED)

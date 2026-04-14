@@ -83,31 +83,40 @@ npm run start
 
 ## Как запустить проект локально в контейнерах.
 
-Ввыполнить команды в директории foodgram(по месту нахождения файла docker-compose.yml)
+Ввыполнить команды в директории foodgram(по месту нахождения файла docker-compose.local.yml)
+
+Cоздать переменные окружения .env.local на основании .env.example:
+
+```
+cp .env.example .env
+```
+
 Собрать образы и запустить контейнеры:
 
 ```
-docker compose up --build -d
+docker compose -f docker-compose.common.yml -f docker-compose.local.yml up --build -d
 ```
 
 Выполнить миграции:
 
 ```
-docker compose exec backend python manage.py migrate
+docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec backend python manage.py migrate
 ```
 
 Собрать статику:
 
 ```
-docker compose exec backend python manage.py collectstatic
+docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec backend python manage.py collectstatic
 
-docker compose exec backend cp -r /app collected_static/. /backend_static/static/
+docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec backend cp -r /app collected_static/. /backend_static/static/
 ```
 
 Загрузить базу ингредиентов и тегов:
 
 ```
-docker compose exec backend python manage.py load_data
+docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec backend python manage.py load_tags
+
+docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec backend python manage.py load_ingredients
 ```
 
 ## Примеры запросов к API Foodgram.
@@ -204,11 +213,11 @@ docker compose exec backend python manage.py load_data
  - TELEGRAM_TOKEN
 
 Создать .env на сервере.
-Скопировать на сервер файл docker-compose.yml.
-Из директории с файлом docker-compose.yml выполнить команду:
+Скопировать на сервер в одну директорию файлы docker-compose.common.yml и docker-compose.product.yml
+Из директории с файлами docker-compose.common.yml и docker-compose.product.yml выполнить команду:
 
 ```
-scp -i path_to SSH/SSH_name docker-compose.yml username@server_ip:/home/username/docker-compose.yml
+scp -i path_to SSH/SSH_name docker-compose.common.yml docker-compose.product.yml username@server_ip:/home/username/ docker-compose.common.yml docker-compose.product.yml
 ```
 Загрузить на GitHub в главную ветку:
 

@@ -78,8 +78,8 @@ class CookingTimeListFilter(admin.SimpleListFilter):
             faster_time=Percentile('cooking_time', percentile=0.33),
             average_time=Percentile('cooking_time', percentile=0.66)
         )
-        self.faster_time = int(times['faster_time'])
-        self.average_time = int(times['average_time'])
+        self.faster_time = int(times['faster_time'] or 0)
+        self.average_time = int(times['average_time'] or 0)
         super().__init__(request, params, model, model_admin)
 
     def lookups(self, request, model_admin):
@@ -140,7 +140,8 @@ class RecipeInline(admin.TabularInline):
     def get_ingredients(self, recipe):
         """Отображение ингредиентов в списке."""
         return ', '.join(
-            [ingredient.name for ingredient in recipe.ingredients.all()]
+            recipe_ingredient.ingredient.name
+            for recipe_ingredient in recipe.recipe_ingredients.all()
         )
 
 
@@ -193,7 +194,7 @@ class UserAdmin(UserAdmin):
         'username',
         'email'
     )
-    list_editatable = ('password',)
+    list_editable = ('password',)
     list_filter = (
         IsResipeListFilter,
         IsFollowingListFilter,
@@ -251,7 +252,7 @@ class UserAdmin(UserAdmin):
 
 
 @admin.register(Ingredient)
-class InredientAdmin(admin.ModelAdmin):
+class IngredientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'measurement_unit', 'count_recipes')
     list_editable = ('measurement_unit',)
     search_fields = ('name',)
@@ -303,7 +304,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'author__username', 'name',
         'ingredients__name', 'tags__name'
     )
-    list_filter = ('author', 'ingredients', 'tags', CookingTimeListFilter)
+    list_filter = ('author', CookingTimeListFilter)
     list_display_links = ('author', 'name')
     filter_horizontal = ('tags',)
     ordering = ('name',)
@@ -359,7 +360,7 @@ class ShoppingCartFavoriteAdmin(admin.ModelAdmin):
     """Базовый класс от которого наследуют ShoppingCartAdmin и FavoriteAdmin"""
     list_display = ('user', 'recipe')
     list_display_links = ('user', 'recipe')
-    search_fields = ('user', 'recipe')
+    search_fields = ('user__username', 'recipe__name')
     list_filter = ('user', 'recipe')
     ordering = ('user__username',)
 
@@ -377,7 +378,7 @@ class FavoriteAdmin(ShoppingCartFavoriteAdmin):
 @admin.register(Subscriptions)
 class SubscriptionsAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'following')
-    search_fields = ('user', 'following')
+    search_fields = ('user__username', 'following__username')
     list_filter = ('user', 'following')
     list_display_links = ('user', 'following')
     autocomplete_fields = ('following',)

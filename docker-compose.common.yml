@@ -3,7 +3,6 @@ volumes:
   static:
   media:
 
-
 services:
   db:
     image: postgres:13.10
@@ -12,32 +11,24 @@ services:
       interval: 10s
       retries: 5
     restart: always
-    env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
 
   backend:
-    image: galinalody/foodgram_backend
-    env_file: .env
     restart: always
     volumes:
-      - static:/backend_static
       - media:/app/media
     depends_on:
       db:
         condition: service_healthy
         restart: true
-   
+
   frontend:
-    env_file: .env
-    image: galinalody/foodgram_frontend
     command: cp -r /app/build/. /frontend_static/
     volumes:
       - static:/frontend_static
-  
+
   gateway:
-    image: galinalody/foodgram_gateway
-    env_file: .env
     restart: always
     ports:
       - 8080:80
@@ -47,6 +38,3 @@ services:
     depends_on:
       - backend
       - frontend
-
-
-    

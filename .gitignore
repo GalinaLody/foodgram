@@ -141,6 +141,6 @@ dmypy.json
 static/
 media/
 
-docker-compose.local.yml
+
 .env.local
 backend/collected_static/

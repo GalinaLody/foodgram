@@ -1,0 +1,20 @@
+services:
+  db:
+    env_file: .env
+
+  backend:
+    image: galinalody/foodgram_backend
+    env_file: .env
+    volumes:
+      - static:/backend_static
+   
+  frontend:
+    env_file: .env
+    image: galinalody/foodgram_frontend
+  
+  gateway:
+    image: galinalody/foodgram_gateway
+    env_file: .env
+
+
+    

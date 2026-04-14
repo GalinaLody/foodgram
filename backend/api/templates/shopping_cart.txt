@@ -1,8 +1,8 @@
 Список покупок от {{ date }}
 
-{% for ingredient in ingredients %}{{ forloop.counter }}. {{ ingredient.name|capfirst }} ({{ ingredient.unit }}) — {{ ingredient.amount }}
+{% for ingredient in ingredients %}{{ forloop.counter }}. {{ ingredient.ingredient__name|capfirst }} ({{ ingredient.ingredient__measurment_unit }}) — {{ ingredient.ingredient__total_amount }}
 {% endfor %}
 
 Рецепты:
-{% for recipe in recipes %}— {{ recipe.name }} (@{{ recipe.author__username }})
+{% for recipe in recipes %}— {{ recipe.name }} (@{{ recipe.author.username }})
 {% endfor %}

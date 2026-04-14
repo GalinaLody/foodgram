@@ -10,8 +10,10 @@ from recipes.constants import (
 )
 from recipes.models import (
     Ingredient,
+    Favorite,
     Recipe,
     RecipeIngredient,
+    ShoppingCart,
     Tag,
 )
 
@@ -52,7 +54,7 @@ class ReadRecipeIngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecipeIngredient
         fields = ('id', 'name', 'measurement_unit', 'amount')
-        read_only_fields = ('amount',)
+        read_only_fields = ('id', 'name', 'measurement_unit', 'amount')
 
 
 class ShortInfoRecipeSerializer(serializers.ModelSerializer):
@@ -106,34 +108,37 @@ class ReadRecipeSerializer(serializers.ModelSerializer):
             'ingredients', 'is_favorited',
             'is_in_shopping_cart', 'text'
         )
-        read_only_fields = ('id', 'name', 'image', 'cooking_time', 'text')
+        read_only_fields = ('id', 'name',
+            'image', 'cooking_time',
+            'tags', 'author',
+            'ingredients', 'is_favorited',
+            'is_in_shopping_cart', 'text')
 
-    def get_new_calculated_field(self, recipe, name_field, model_related_name):
+    def get_user_recipe_relation_status(self, recipe,
+                                        name_field, model):
         """Общий метод получения вычисляемых полей
         is_favorited и is_in_shopping_cart."""
         if hasattr(recipe, name_field):
             return getattr(recipe, name_field)
         request = self.context['request']
         user = request.user
-        if user.is_authenticated:
-            return getattr(
-                recipe, model_related_name
-            ).filter(user=user).exists()
-        else:
-            return False
+        return (
+            user.is_authenticated
+            and model.objects.filter(user=user, recipe=recipe).exists()
+        )
 
     def get_is_favorited(self, recipe):
         """Если объект содержит поле is_favorited значение берется
         из объекта, если нет - вычисляется."""
-        return self.get_new_calculated_field(
-            recipe, 'is_favorited', 'favorites'
+        return self.get_user_recipe_relation_status(
+            recipe, 'is_favorited', Favorite
         )
 
     def get_is_in_shopping_cart(self, recipe):
         """Если объект содержит поле is_in_shopping_cart значение берется
         из объекта, если нет - вычисляется."""
-        return self.get_new_calculated_field(
-            recipe, 'is_in_shopping_cart', 'shoppingcarts'
+        return self.get_user_recipe_relation_status(
+            recipe, 'is_in_shopping_cart', ShoppingCart
         )
 
 

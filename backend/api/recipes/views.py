@@ -1,20 +1,14 @@
-from pathlib import Path
 
-from django.db import IntegrityError
 from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import inch
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
-from rest_framework import exceptions, filters, permissions, status, viewsets
+from rest_framework import exceptions, filters, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from api.common.filters import NameSearchFilterBackend
 from api.common.permissions import IsAuthorOrReadOnly
 from api.recipes.filters import RecipeFilter
 from api.recipes.serializers import (
@@ -24,7 +18,6 @@ from api.recipes.serializers import (
     WriteRecipeSerializer,
 )
 from api.recipes.utils import create_shopping_cart_text
-from common.filters import NameSearchFilterBackend
 from recipes.models import (
     Favorite,
     Recipe,

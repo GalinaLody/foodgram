@@ -9,8 +9,8 @@ from recipes.constants import (
     RECIPE_MIN_COOKING_TIME,
 )
 from recipes.models import (
-    Ingredient,
     Favorite,
+    Ingredient,
     Recipe,
     RecipeIngredient,
     ShoppingCart,

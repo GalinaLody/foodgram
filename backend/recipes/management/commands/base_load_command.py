@@ -22,19 +22,19 @@ class BaseLoadDataCommand(BaseCommand):
         )
         try:
             with open(file_path, encoding='utf-8') as data:
-                objects = [self.model(**object) for object in json.load(data)]
                 self.stdout.write(
                     self.style.SUCCESS(
                         f'Загрузка данных для модели {self.model.__name__}'
                     )
                 )
-            count = self.model.objects.bulk_create(
-                objects, ignore_conflicts=True
-            )
+                count = self.model.objects.bulk_create(
+                    (self.model(**object) for object in json.load(data)),
+                    ignore_conflicts=True
+                )
             self.stdout.write(
                 self.style.SUCCESS(
                     f'Данные в количестве {len(count)} объектов '
-                    f'для модели {self.model.__name__} загружены!'
+                    f'для модели {self.model.__name__} обработаны!'
                 )
             )
         except FileNotFoundError:

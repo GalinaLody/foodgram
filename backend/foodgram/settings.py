@@ -24,9 +24,6 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework.authtoken',
     'djoser',
-    'core.apps.CoreConfig',
-    'users.apps.UsersConfig',
-    'ingredients.apps.IngredientsConfig',
     'recipes.apps.RecipesConfig',
     'api.apps.ApiConfig',
 ]
@@ -107,7 +104,7 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'users.User'
+AUTH_USER_MODEL = 'recipes.User'
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'collected_static'

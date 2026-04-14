@@ -1,0 +1,8 @@
+Список покупок от {{ date }}
+
+{% for ingredient in ingredients %}{{ forloop.counter }}. {{ ingredient.name|capfirst }} ({{ ingredient.unit }}) — {{ ingredient.amount }}
+{% endfor %}
+
+Рецепты:
+{% for recipe in recipes %}— {{ recipe.name }} (@{{ recipe.author__username }})
+{% endfor %}

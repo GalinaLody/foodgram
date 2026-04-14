@@ -1,40 +1,30 @@
 from django.contrib.auth import get_user_model
+from djoser.serializers import (
+    UserCreateSerializer as DjoserUserCreateSerializer,
+    UserSerializer as DjoserUserSerializer,
+)
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from users.models import Subscriptions
+
+from recipes.models import Subscriptions
 
 User = get_user_model()
 
 
-class BaseUserSerializer(serializers.ModelSerializer):
-    """Базовый сериалайзер модели пользователя."""
+class BaseUserSerializer(DjoserUserSerializer):
+    """Базовый сериалайзер модели пользователя.
 
-    class Meta:
-        model = User
-        fields = (
-            'username', 'email', 'id',
-            'first_name', 'last_name',
-        )
-
-
-class UserCreateSerializer(BaseUserSerializer):
-    """Кастомный сериализатор для создания пользователя.
-
-    Используется для переопределения
-    стандартного сериализатора Djoser user_create.
-    Наследует от BaseUserSerializer, добавляя поле password.
-    Делает поле password доступным только для записи
-    и хеширует пароль пользователя при сохранении в базу.
+    Наследует от сериализатора djoser и включает поля
+    id, email, username и поля модели User, указанные в
+    REQUIRED_FIELDS() модели кастомной модели User
     """
 
-    password = serializers.CharField(write_only=True)
 
-    class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + ('password',)
+class UserCreateSerializer(DjoserUserCreateSerializer):
+    """Кастомный сериализатор для создания пользователя.
 
-    def create(self, validated_data):
-        """Нормализует почту и хеширует пароль при сохранении пользователя."""
-        return User.objects.create_user(**validated_data)
+    Наследует от сериализатора djoser.
+    """
 
 
 class UserSerializer(BaseUserSerializer):
@@ -54,12 +44,12 @@ class UserSerializer(BaseUserSerializer):
             'avatar', 'is_subscribed'
         )
 
-    def get_is_subscribed(self, obj):
+    def get_is_subscribed(self, obj_user):
         """Получает значение поля is_subscribed, которого нет в модели."""
         request = self.context['request']
         if request.user.is_anonymous:
             return False
-        return request.user.subscriptions.filter(following=obj).exists()
+        return request.user.subscriptions.filter(following=obj_user).exists()
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -93,7 +83,7 @@ class SubscribeSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
 
-    def get_recipes(self, obj):
+    def get_recipes(self, user):
         """Получает поле recipes в формате ShortInfoRecipeSerializer.
         Если в запросе установлен лимит рецептов(параметр recipes_limit),
         возвращает ответ с указанным количестовм рецептов."""
@@ -101,23 +91,22 @@ class SubscribeSerializer(UserSerializer):
         request = self.context['request']
         if request.query_params.get('recipes_limit'):
             recipes_limit = int(request.query_params.get('recipes_limit'))
-            recipes = obj.recipes.all()[:recipes_limit]
+            recipes = user.recipes.all()[:recipes_limit]
         else:
-            recipes = obj.recipes.all()
+            recipes = user.recipes.all()
         return ShortInfoRecipeSerializer(
             recipes, many=True, context=self.context
         ).data
 
-    def get_recipes_count(self, obj):
+    def get_recipes_count(self, user):
         """Если объект содержит поле recipes_count значение берется
         из объекта, если нет - вычисляется."""
-        if hasattr(obj, 'recipes_count'):
-            return obj.recipes_count
+        if hasattr(user, 'recipes_count'):
+            return user.recipes_count
         else:
-            count = obj.recipes.count()
-            return count
+            return user.recipes.count()
 
-    def validate_following(self, value):
+    def validate_following(self, new_following):
         """Проверка подписки на самого себя
         и проверка повторной подписки на пользователя.
         Проверяет, чтобы поле запроса following не совпадало с
@@ -125,14 +114,14 @@ class SubscribeSerializer(UserSerializer):
         А также проверяет, чтобы пара user-following была уникальной
         в модели Subscriptions."""
         request = self.context['request']
-        if value == request.user:
+        if new_following == request.user:
             raise serializers.ValidationError(
                 'Подписка на самого себя невозможна.'
             )
         if Subscriptions.objects.filter(
-            user=request.user, following=value
+            user=request.user, following=new_following
         ).exists():
             raise serializers.ValidationError(
                 'Повторная подписка на пользователя невозможна.'
             )
-        return value
+        return new_following

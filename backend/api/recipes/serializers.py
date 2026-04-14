@@ -1,10 +1,19 @@
 from collections import Counter
 
-from api.users.serializers import UserSerializer
 from drf_extra_fields.fields import Base64ImageField
-from ingredients.models import Ingredient
-from recipes.models import Recipe, RecipeIngredient, Tag
 from rest_framework import serializers
+
+from api.users.serializers import UserSerializer
+from recipes.constants import (
+    RECIPE_INGREDIENT_MIN_AMOUNT,
+    RECIPE_MIN_COOKING_TIME,
+)
+from recipes.models import (
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    Tag,
+)
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -15,7 +24,7 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'slug')
 
 
-class WriteRecipeIngredientSerializer(serializers.ModelSerializer):
+class WriteRecipeIngredientSerializer(serializers.Serializer):
     """Сериализатор промежуточной модели связи Рецепт и Ингредиент.
 
     Используется для сериализатора создания рецептов WriteRecipeSerializer.
@@ -25,10 +34,7 @@ class WriteRecipeIngredientSerializer(serializers.ModelSerializer):
         queryset=Ingredient.objects.all(),
         source='ingredient'
     )
-
-    class Meta:
-        model = RecipeIngredient
-        fields = ('id', 'amount')
+    amount = serializers.IntegerField(min_value=RECIPE_INGREDIENT_MIN_AMOUNT)
 
 
 class ReadRecipeIngredientSerializer(serializers.ModelSerializer):
@@ -37,25 +43,28 @@ class ReadRecipeIngredientSerializer(serializers.ModelSerializer):
     Используется для сериализатора чтения рецептов ReadRecipeSerializer.
     """
 
-    id = serializers.IntegerField(source='ingredient.id')
-    name = serializers.CharField(source='ingredient.name')
+    id = serializers.IntegerField(source='ingredient.id', read_only=True)
+    name = serializers.CharField(source='ingredient.name', read_only=True)
     measurement_unit = serializers.CharField(
-        source='ingredient.measurement_unit'
+        source='ingredient.measurement_unit', read_only=True
     )
 
     class Meta:
         model = RecipeIngredient
         fields = ('id', 'name', 'measurement_unit', 'amount')
+        read_only_fields = ('amount',)
 
 
 class ShortInfoRecipeSerializer(serializers.ModelSerializer):
     """Сериализатор для рецептов с сокращенным количеством данный."""
 
-    image = Base64ImageField(required=False, allow_null=True)
-
     class Meta:
         model = Recipe
         fields = (
+            'id', 'name',
+            'image', 'cooking_time'
+        )
+        read_only_fields = (
             'id', 'name',
             'image', 'cooking_time'
         )
@@ -70,18 +79,23 @@ class ReadRecipeSerializer(serializers.ModelSerializer):
     имеют булевые значения.
     """
 
-    tags = TagSerializer(many=True)
+    tags = TagSerializer(many=True, read_only=True)
     author = UserSerializer(
         read_only=True,
         default=serializers.CurrentUserDefault(),
     )
     ingredients = ReadRecipeIngredientSerializer(
         source='recipe_ingredients',
-        many=True
+        many=True,
+        read_only=True
     )
-    is_favorited = serializers.BooleanField(required=False)
-    is_in_shopping_cart = serializers.BooleanField(required=False)
-    image = Base64ImageField(required=True,)
+    is_favorited = serializers.SerializerMethodField(
+        required=False, read_only=True
+    )
+    is_in_shopping_cart = serializers.SerializerMethodField(
+        required=False,
+        read_only=True
+    )
 
     class Meta:
         model = Recipe
@@ -91,6 +105,35 @@ class ReadRecipeSerializer(serializers.ModelSerializer):
             'tags', 'author',
             'ingredients', 'is_favorited',
             'is_in_shopping_cart', 'text'
+        )
+        read_only_fields = ('id', 'name', 'image', 'cooking_time', 'text')
+
+    def get_new_calculated_field(self, recipe, name_field, model_related_name):
+        """Общий метод получения вычисляемых полей
+        is_favorited и is_in_shopping_cart."""
+        if hasattr(recipe, name_field):
+            return getattr(recipe, name_field)
+        request = self.context['request']
+        user = request.user
+        if user.is_authenticated:
+            return getattr(
+                recipe, model_related_name
+            ).filter(user=user).exists()
+        else:
+            return False
+
+    def get_is_favorited(self, recipe):
+        """Если объект содержит поле is_favorited значение берется
+        из объекта, если нет - вычисляется."""
+        return self.get_new_calculated_field(
+            recipe, 'is_favorited', 'favorites'
+        )
+
+    def get_is_in_shopping_cart(self, recipe):
+        """Если объект содержит поле is_in_shopping_cart значение берется
+        из объекта, если нет - вычисляется."""
+        return self.get_new_calculated_field(
+            recipe, 'is_in_shopping_cart', 'shoppingcarts'
         )
 
 
@@ -109,6 +152,7 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
     )
     ingredients = WriteRecipeIngredientSerializer(many=True, required=True)
     image = Base64ImageField(required=True)
+    cooking_time = serializers.IntegerField(min_value=RECIPE_MIN_COOKING_TIME)
 
     class Meta:
         model = Recipe
@@ -119,62 +163,44 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
             'cooking_time'
         )
 
-    def validate_ingredients(self, value):
-        """Проверяет, чтобы поле ингредиенты не было пустым,
-        все ингредиенты были is_active, не было повторяющихся ингредиентов."""
-        ids = [ingredient['ingredient'].id for ingredient in value]
+    def validate_field(self, ids, model):
+        """Общий метод валидации поля (для поля ингредиентов и тегов).
+        Проверяет, чтобы поле не было пустым
+        и не было повторяющихся элементов."""
         if not ids:
             raise serializers.ValidationError(
-                'Поле с ингредиентами не может быть пустым.'
-            )
-
-        count_ingredients = Ingredient.objects.filter(
-            id__in=ids, is_active=True
-        ).count()
-        if len(set(ids)) != count_ingredients:
-            raise serializers.ValidationError(
-                'Нельзя использовать не активные ингредиенты.'
+                'Поле не может быть пустым.'
             )
 
         counter = Counter(ids)
-        doubl_ingredients = []
-        for ingredient_id, count in counter.items():
-            if count >= 2:
-                doubl_ingredients.append(ingredient_id)
-        if doubl_ingredients:
-            name_ingredients = [
-                ingredient.name
-                for ingredient in Ingredient.objects.filter(
-                    id__in=doubl_ingredients
+        doubl_ids = [
+            value_id
+            for value_id, count in counter.items()
+            if count >= 2
+        ]
+        if doubl_ids:
+            name_object = [
+                object.name
+                for object in model.objects.filter(
+                    id__in=doubl_ids
                 )
             ]
             raise serializers.ValidationError(
-                f'Ингредиент(ы) {", ".join(name_ingredients)} повторяется.'
+                f'{name_object} повторяется.'
             )
-        return value
 
-    def validate_tags(self, value):
+    def validate_ingredients(self, ingredients):
+        """Проверяет, чтобы поле ингредиенты не было пустым,
+        не было повторяющихся ингредиентов."""
+        ids = [ingredient['ingredient'].id for ingredient in ingredients]
+        self.validate_field(ids, Ingredient)
+        return ingredients
+
+    def validate_tags(self, tags):
         """Проверяет, чтобы поле с тегами не было пустым
         и не было повторяющихся тегов."""
-        if not value:
-            raise serializers.ValidationError(
-                'Поле с тегами не может быть пустым.'
-            )
-        else:
-            counter = Counter(value)
-            double_tegs = []
-            for tag, count in counter.items():
-                if count >= 2:
-                    double_tegs.append(tag)
-            if double_tegs:
-                print(double_tegs)
-                name_tag = [
-                    tag.name for tag in double_tegs
-                ]
-                raise serializers.ValidationError(
-                    f'Тег(и) {", ".join(name_tag)} повторяется.'
-                )
-        return value
+        self.validate_field(tags, Tag)
+        return tags
 
     def validate_image(self, value):
         """Проверяет, чтобы поле image не было пустым."""
@@ -182,36 +208,28 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Поле не может быть пустым.')
         return value
 
+    def create_relations_recipe_ingredient(self, recipe, ingredients):
+        """Метод создает объекты модели RecipeIngredient,
+        используется в методах create/udate."""
+        RecipeIngredient.objects.bulk_create(
+            RecipeIngredient(
+                recipe=recipe, **ingredient
+            ) for ingredient in ingredients
+        )
+
     def create(self, validated_data):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
-        recipe = Recipe.objects.create(**validated_data)
-        for tag in tags:
-            recipe.tags.add(tag)
-        for ingredient in ingredients:
-            RecipeIngredient.objects.create(recipe=recipe, **ingredient)
+        recipe = super().create(validated_data)
+        recipe.tags.set(tags)
+        self.create_relations_recipe_ingredient(recipe, ingredients)
         return recipe
 
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time
-        )
-        instance.image = validated_data.get('image', instance.image)
-        print(validated_data)
-        if 'tags' in validated_data:
-            tags = validated_data.pop('tags')
-            instance.tags.set(tags)
-
-        if 'ingredients' in validated_data:
-            instance.recipe_ingredients.all().delete()
-            new_ingredients = validated_data.pop('ingredients')
-            for ingredient in new_ingredients:
-                RecipeIngredient.objects.create(recipe=instance, **ingredient)
-
-        instance.save()
-        return instance
+    def update(self, recipe, validated_data):
+        recipe.recipe_ingredients.all().delete()
+        ingredients = validated_data.pop('ingredients')
+        self.create_relations_recipe_ingredient(recipe, ingredients)
+        return super().update(recipe, validated_data)
 
     def to_representation(self, instance):
         """Возвращает данные в формате read-сериализатора рецептов."""

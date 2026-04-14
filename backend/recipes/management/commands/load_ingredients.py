@@ -15,7 +15,7 @@
 поэтому повторный запуск не создаёт дубликаты.
 """
 
-from ingredients.models import Ingredient
+from recipes.models import Ingredient
 
 from .base_load_command import BaseLoadDataCommand
 

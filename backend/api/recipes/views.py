@@ -1,18 +1,12 @@
 import io
 from pathlib import Path
 
-from api.common.permissions import IsAuthororOrReadOnly
-from api.common.views import AddDeleteRelationMixin, ListRetrieveViewSet
-from api.recipes.filters import RecipeFilter
-from api.recipes.serializers import (ReadRecipeSerializer,
-                                     ShortInfoRecipeSerializer, TagSerializer,
-                                     WriteRecipeSerializer)
+from django.db import IntegrityError
 from django.db.models import Exists, OuterRef, Sum
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
-from recipes.models import (Favorite, Recipe, RecipeIngredient, ShoppingCart,
-                            Tag)
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
@@ -22,8 +16,26 @@ from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from api.common.permissions import IsAuthorOrReadOnly
+from api.common.views import ListRetrieveViewSet
+from api.recipes.filters import RecipeFilter
+from api.recipes.serializers import (
+    ReadRecipeSerializer,
+    ShortInfoRecipeSerializer,
+    TagSerializer,
+    WriteRecipeSerializer,
+)
+from api.recipes.utils import create_shopping_cart_text
+from recipes.models import (
+    Favorite,
+    Recipe,
+    RecipeIngredient,
+    ShoppingCart,
+    Tag,
+)
 
-class TagtViewSet(ListRetrieveViewSet):
+
+class TagViewSet(ListRetrieveViewSet):
     """Представление API для управления тегами.
 
     Просмотр(чтение) списка тегов.
@@ -39,7 +51,7 @@ class TagtViewSet(ListRetrieveViewSet):
     queryset = Tag.objects.all()
 
 
-class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
+class RecipeViewSet(viewsets.ModelViewSet):
     """Представляет API для управления рецептами.
 
     Метод PUT не поддерживается.
@@ -55,7 +67,7 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
     """
 
     http_method_names = ('get', 'post', 'patch', 'delete')
-    permission_classes = (IsAuthororOrReadOnly,)
+    permission_classes = (IsAuthorOrReadOnly,)
     filter_backends = (DjangoFilterBackend,
                        filters.OrderingFilter)
     filterset_class = RecipeFilter
@@ -89,35 +101,6 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
             return ReadRecipeSerializer
         return WriteRecipeSerializer
 
-    def create(self, request, *args, **kwargs):
-        """Переопределен метод create, чтобы после создания рецепта
-        получить поля is_favorited,is_in_shopping_cart и добавить в ответ."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        instance = serializer.instance
-        queryset = self.get_queryset()
-        instance = queryset.get(id=instance.id)
-        return Response(ReadRecipeSerializer(
-            instance, context=self.get_serializer_context()
-        ).data, status=status.HTTP_201_CREATED)
-
-    def update(self, request, *args, **kwargs):
-        """Переопределен метод update, чтобы после обновления рецепта
-        получить поля is_favorited,is_in_shopping_cart и добавить в ответ."""
-
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        queryset = self.get_queryset()
-        instance = queryset.get(id=instance.id)
-        return Response(ReadRecipeSerializer(
-            instance, context=self.get_serializer_context()
-        ).data, status=status.HTTP_200_OK)
-
     def perform_create(self, serializer):
         """Автоматическое проставление автора.
         При создании рецепта в качетсве автора сохраняется
@@ -126,11 +109,16 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=('get',), url_path='get-link')
     def get_link(self, request, pk):
-        """Метод возвращает короткую ссылку для рецепта."""
-        recipe = self.get_object()
-        short_link = recipe.create_short_link()
-        full_link = f'/s/{short_link}/'
-        return Response({'short-link': request.build_absolute_uri(full_link)})
+        """Метод возвращает короткую ссылку для рецепта
+        на основании id-ключа рецепта."""
+        if Recipe.objects.filter(id=pk).exists():
+            return Response({
+                'short-link': request.build_absolute_uri(
+                    reverse('recipes:redirect', kwargs={'recipe_id': pk})
+                )
+            })
+        else:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
     @action(
         detail=False,
@@ -140,25 +128,29 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         """Обрабатывает запрос к эндпоинту recipes/download_shopping_cart.
-        Метод получает список покупок аутентиицированного пользователя,
+        Метод получает список покупок аутентифицированного пользователя,
         сделавшего запрос. Ингредиенты в списке отражаются без повторений
         с суммированным количеством. Метод отрисовывает pdf по шаблону
         и возвращает ответ ввиде pdf-файла для скачивания."""
         recipes_queryset = Recipe.objects.filter(
-            shopping_carts__user=request.user
-        )
+            shoppingcarts__user=request.user
+        ).prefetch_related('tags')
+
         ingredients = RecipeIngredient.objects.filter(
             recipe__in=recipes_queryset
         ).values(
             'ingredient__name', 'ingredient__measurement_unit'
-        ).annotate(total_amount=Sum('amount'))
-        # переводим список ингредиентов в список строк
-        full_text = [
-            f'{ingredient["ingredient__name"]} '
-            f'({ingredient["ingredient__measurement_unit"]}) - '
-            f'{ingredient["total_amount"]}'
-            for ingredient in ingredients
-        ]
+        ).annotate(
+            total_amount=Sum('amount')
+        ).order_by('ingredient__name')
+
+        recipes = (
+            recipes_queryset
+            .values('name', 'author__username')
+            .prefetch_related('tags')
+        )
+        # вызываем кастомную фукцию для создания списка в текстовом формате.
+        shopping_cart_text = create_shopping_cart_text(ingredients, recipes)
         # прописываем путь, где лежат шрифты и регистрируем их.
         font_path = Path(__file__).parent / 'fonts' / 'DejaVuSans.ttf'
         pdfmetrics.registerFont(TTFont('DejaVuSans', str(font_path)))
@@ -166,7 +158,7 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer)
         styles = getSampleStyleSheet()
-        # создаем кастомные ститли для заголова и остального текста
+        # создаем кастомные стили для заголова и остального текста
         title_style = ParagraphStyle(
             name='CustomTitle',
             parent=styles['Heading1'],
@@ -182,14 +174,19 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
             fontSize=12,
             leading=14
         )
-        # фомируем документа праграфами(текстом) и отступами
-        story = []
-        story.append(Paragraph('Список покупок', title_style))
-        story.append(Spacer(1, 0.5 * inch))
-        for ingredient in full_text:
-            story.append(Paragraph(ingredient, text_style))
-            story.append(Spacer(1, 0.15 * inch))
-        doc.build(story)
+        # фомируем документа праграфами и отступами
+        doc.build([
+            Paragraph('Список покупок', title_style),
+            Spacer(1, 0.5 * inch),
+            *[
+                elem
+                for line in shopping_cart_text.splitlines()
+                for elem in (
+                    Paragraph(line or '&nbsp;', text_style),
+                    Spacer(1, 0.15 * inch)
+                )
+            ]
+        ])
         buffer.seek(0)
 
         return FileResponse(
@@ -197,6 +194,29 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
             as_attachment=True,
             filename='shopping_cart.pdf'
         )
+
+    def add_relation(self, model, serializer_class, pk):
+        user = self.request.user
+        recipe = get_object_or_404(Recipe, id=pk)
+        try:
+            model.objects.create(user=user, recipe=recipe)
+            return Response(
+                serializer_class(
+                    recipe, context={'request': self.request}
+                ).data,
+                status=201
+            )
+        except IntegrityError:
+            return Response(status=400)
+
+    def delete_relation(self, model, pk):
+        user = self.request.user
+        deleted_count, _ = model.objects.filter(
+            user=user, recipe_id=pk
+        ).delete()
+        if deleted_count == 0:
+            return Response(status=400)
+        return Response(status=204)
 
     @action(
         detail=True,
@@ -211,14 +231,14 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         return self.add_relation(
             ShoppingCart,
             ShortInfoRecipeSerializer,
-            'recipe'
+            pk
         )
 
     @shopping_cart.mapping.delete
     def delete_recipe_shopping_cart(self, request, pk):
         """"Аутентифицированный пользователь может
         удалить рецепт из корзины."""
-        return self.delete_relation(ShoppingCart, 'recipe')
+        return self.delete_relation(ShoppingCart, pk)
 
     @action(
         detail=True,
@@ -230,17 +250,10 @@ class RecipeViewSet(AddDeleteRelationMixin, viewsets.ModelViewSet):
         """Обрабатывает запрос к эндпоинту recipes/id/favorite.
         Аутентифицированный пользователь может добавить рецепт
         себе в избранное."""
-        return self.add_relation(Favorite, ShortInfoRecipeSerializer, 'recipe')
+        return self.add_relation(Favorite, ShortInfoRecipeSerializer, pk)
 
     @favorite.mapping.delete
-    def delete_arecipe_favorite(self, request, pk):
+    def delete_recipe_favorite(self, request, pk):
         """"Аутентифицированный пользователь может
         удалить рецепт из избранного."""
-        return self.delete_relation(Favorite, 'recipe')
-
-
-def redirect_to_recipe_url(request, short_link: str):
-    """При получении короткой ссылки рецепта перенаправляет пользователя
-    на страницу рецепта."""
-    recipe = get_object_or_404(Recipe, short_link=short_link)
-    return redirect(f'/recipes/{recipe.id}')
+        return self.delete_relation(Favorite, pk)

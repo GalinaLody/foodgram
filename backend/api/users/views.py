@@ -1,20 +1,21 @@
-from api.common.views import AddDeleteRelationMixin
 from django.contrib.auth import get_user_model
-from djoser.permissions import CurrentUserOrAdmin
-from djoser.views import UserViewSet
+from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
+from djoser.permissions import CurrentUserOrAdmin as DjoserCurrentUserOrAdmin
+from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from users.models import Subscriptions
 
-from .serializers import AvatarSerializer, SubscribeSerializer
+from api.users.serializers import AvatarSerializer, SubscribeSerializer
+from recipes.models import Subscriptions
 
 User = get_user_model()
 
 
-class MyUserViewSet(AddDeleteRelationMixin, UserViewSet):
+class FoodgramUserViewSet(DjoserUserViewSet):
     """API для работы с пользователем и его подписками.
 
     Наследует от представления djoser UserViewSet и
@@ -47,7 +48,7 @@ class MyUserViewSet(AddDeleteRelationMixin, UserViewSet):
         detail=False,
         methods=('put',),
         url_path='me/avatar',
-        permission_classes=(CurrentUserOrAdmin,)
+        permission_classes=(DjoserCurrentUserOrAdmin,)
     )
     def avatar(self, request):
         """Добавляет аватар пользователя."""
@@ -72,8 +73,7 @@ class MyUserViewSet(AddDeleteRelationMixin, UserViewSet):
     def subscriptions(self, request):
         """Выводит список подписок текущего пользователя
         по эндпоинту /subscriptions."""
-        current_user = request.user
-        obj = User.objects.filter(follower_subscriptions__user=current_user)
+        obj = User.objects.filter(follower_subscriptions__user=request.user)
         page = self.paginate_queryset(obj)
         serializer = SubscribeSerializer(
             page, many=True,
@@ -89,14 +89,28 @@ class MyUserViewSet(AddDeleteRelationMixin, UserViewSet):
     def subscribe(self, request, id):
         """Создает подписку текущего пользоватея на выбранного пользователя
         по эндпоинту /subscribe."""
-        return self.add_relation(
-            Subscriptions,
-            SubscribeSerializer,
-            'following'
-        )
+        user = self.request.user
+        user_following = get_object_or_404(User, id=id)
+        try:
+            Subscriptions.objects.create(user=user, following=user_following)
+            return Response(
+                SubscribeSerializer(
+                    user_following,
+                    context={'request': self.request}
+                ).data,
+                status=201
+            )
+        except IntegrityError:
+            return Response(status=400)
 
     @subscribe.mapping.delete
     def delete_subscribe(self, request, id):
         """Удаляет подписку текущего пользоватея на другого пользователя
         по эндпоинту /subscribe."""
-        return self.delete_relation(Subscriptions, 'following')
+        user = self.request.user
+        deleted_count, __ = Subscriptions.objects.filter(
+            user=user, following_id=id
+        ).delete()
+        if deleted_count == 0:
+            return Response(status=400)
+        return Response(status=204)

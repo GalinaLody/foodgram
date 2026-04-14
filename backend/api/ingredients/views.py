@@ -1,6 +1,6 @@
 from api.common.views import ListRetrieveViewSet
 from api.ingredients.serializers import IngredientSerializer
-from ingredients.models import Ingredient
+from recipes.models import Ingredient
 
 
 class IngredientViewSet(ListRetrieveViewSet):

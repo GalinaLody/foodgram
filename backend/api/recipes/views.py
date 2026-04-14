@@ -115,7 +115,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             'short-link': request.build_absolute_uri(
                 reverse('recipes:redirect', args=[pk])
             )
-            })
+        })
 
     @action(
         detail=False,

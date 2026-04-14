@@ -108,11 +108,13 @@ class ReadRecipeSerializer(serializers.ModelSerializer):
             'ingredients', 'is_favorited',
             'is_in_shopping_cart', 'text'
         )
-        read_only_fields = ('id', 'name',
+        read_only_fields = (
+            'id', 'name',
             'image', 'cooking_time',
             'tags', 'author',
             'ingredients', 'is_favorited',
-            'is_in_shopping_cart', 'text')
+            'is_in_shopping_cart', 'text'
+        )
 
     def get_user_recipe_relation_status(self, recipe,
                                         name_field, model):

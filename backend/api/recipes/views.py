@@ -151,7 +151,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         user = self.request.user
         recipe = get_object_or_404(Recipe, id=pk)
         if model.objects.filter(user=user, recipe=recipe).exists():
-            raise exceptions.ValidationError(f'Такой объект модели {model} уже существует.')
+            raise exceptions.ValidationError(
+                f'Такой объект модели {model} уже существует.'
+            )
         model.objects.create(user=user, recipe=recipe)
         return Response(
             ShortInfoRecipeSerializer(

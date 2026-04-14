@@ -131,8 +131,6 @@ jobs:
             sudo docker compose down
             sudo docker image prune -af
             sudo docker compose up -d
-            sudo docker compose exec -T db psql -U $POSTGRES_USER -d postgres -c "DROP DATABASE $POSTGRES_DB WITH (FORCE);"
-            sudo docker compose exec -T db psql -U $POSTGRES_USER -d postgres -c "CREATE DATABASE $POSTGRES_DB OWNER $POSTGRES_USER;"
             sudo docker compose exec backend python manage.py migrate
             sudo docker compose exec backend python manage.py collectstatic
             sudo docker compose exec backend cp -r /app/collected_static/. /backend_static/static/

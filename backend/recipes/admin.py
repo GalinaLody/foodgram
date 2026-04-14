@@ -194,7 +194,6 @@ class UserAdmin(UserAdmin):
         'username',
         'email'
     )
-    list_editable = ('password',)
     list_filter = (
         IsResipeListFilter,
         IsFollowingListFilter,

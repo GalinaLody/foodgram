@@ -54,7 +54,7 @@ class ReadRecipeIngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecipeIngredient
         fields = ('id', 'name', 'measurement_unit', 'amount')
-        read_only_fields = ('id', 'name', 'measurement_unit', 'amount')
+        read_only_fields = fields
 
 
 class ShortInfoRecipeSerializer(serializers.ModelSerializer):
@@ -66,10 +66,7 @@ class ShortInfoRecipeSerializer(serializers.ModelSerializer):
             'id', 'name',
             'image', 'cooking_time'
         )
-        read_only_fields = (
-            'id', 'name',
-            'image', 'cooking_time'
-        )
+        read_only_fields = fields
 
 
 class ReadRecipeSerializer(serializers.ModelSerializer):
@@ -108,13 +105,7 @@ class ReadRecipeSerializer(serializers.ModelSerializer):
             'ingredients', 'is_favorited',
             'is_in_shopping_cart', 'text'
         )
-        read_only_fields = (
-            'id', 'name',
-            'image', 'cooking_time',
-            'tags', 'author',
-            'ingredients', 'is_favorited',
-            'is_in_shopping_cart', 'text'
-        )
+        read_only_fields = fields
 
     def get_user_recipe_relation_status(self, recipe,
                                         name_field, model):
@@ -206,7 +197,8 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
     def validate_tags(self, tags):
         """Проверяет, чтобы поле с тегами не было пустым
         и не было повторяющихся тегов."""
-        self.validate_field(tags, Tag)
+        ids = [tag.id for tag in tags]
+        self.validate_field(ids, Tag)
         return tags
 
     def validate_image(self, value):
@@ -233,8 +225,12 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, recipe, validated_data):
+        ingredients = validated_data.pop('ingredients', None)
+        if ingredients is None:
+            raise serializers.ValidationError(
+                'Поле ингредиенты не может быть пустым.'
+            )
         recipe.recipe_ingredients.all().delete()
-        ingredients = validated_data.pop('ingredients')
         self.create_relations_recipe_ingredient(recipe, ingredients)
         return super().update(recipe, validated_data)
 

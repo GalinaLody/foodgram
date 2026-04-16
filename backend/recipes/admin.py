@@ -1,9 +1,8 @@
+import numpy as np
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Count
-from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from django.utils.translation import gettext_lazy as _
 
 from .models import (
     Favorite,
@@ -15,17 +14,19 @@ from .models import (
     Tag,
     User,
 )
-from .utils import Percentile
 
 
 class IsRelationFilter(admin.SimpleListFilter):
     """Базовый фильтр о наличии/отсутствии у пользователя связей."""
 
+    related_name = type[str]
+    LOOKUP_CHOICES = (
+        ('y', 'есть'),
+        ('n', 'нет')
+    )
+
     def lookups(self, request, model_admin):
-        return (
-            ('y', _('есть')),
-            ('n', _('нет'))
-        )
+        return self.LOOKUP_CHOICES
 
     def queryset(self, request, queryset):
         condition = {f'{self.related_name}__isnull': False}
@@ -36,24 +37,32 @@ class IsRelationFilter(admin.SimpleListFilter):
 
 
 class IsResipeListFilter(IsRelationFilter):
-    """Кастомный фильтр по наличию/отсутствию рецептов у пользователя."""
-    title = _('Наличие рецептов')
+    """Кастомный фильтр о наличии/отсутствию рецептов у пользователя."""
+    title = 'Наличие рецептов'
     parameter_name = 'is_recipes'
     related_name = 'recipes'
 
 
 class IsFollowingListFilter(IsRelationFilter):
-    """Кастомный фильтр по наличию/отсутствию подписок у пользователя."""
-    title = _('Наличие подписок')
+    """Кастомный фильтр о наличии/отсутствию подписок у пользователя."""
+    title = 'Наличие подписок'
     parameter_name = 'is_following'
     related_name = 'subscriptions'
 
 
 class IsFollowersListFilter(IsRelationFilter):
-    """Кастомный фильтр по наличию/отсутствию подписавшихся на пользователя."""
-    title = _('Наличие подписчиков')
+    """Кастомный фильтр о наличии/отсутствию подписавшихся на пользователя."""
+    title = 'Наличие подписчиков'
     parameter_name = 'is_followers'
-    related_name = 'follower_subscriptions'
+    related_name = 'author_subscriptions'
+
+
+class IsInRecipeListFilter(IsRelationFilter):
+    """Кастомный фильтр об использовании/неиспользовании
+    ингредиента в рецептах."""
+    title = 'Используется в рецепте'
+    parameter_name = 'is_in_recipe'
+    related_name = 'recipe_ingredients'
 
 
 class CookingTimeListFilter(admin.SimpleListFilter):
@@ -65,56 +74,54 @@ class CookingTimeListFilter(admin.SimpleListFilter):
     набору рецептов.
     """
 
-    title = _('Время приготовления')
+    title = 'Время приготовления'
     parameter_name = 'cooking_time'
 
-    def __init__(self, request, params, model, model_admin):
-        """Через кастомный percentile высчитывает 2 временных порога
-        и записывает доп.информацией в __init__, чтобы применять
-        в других методах через self."""
-
-        qs = model_admin.get_queryset(request)
-        times = qs.aggregate(
-            faster_time=Percentile('cooking_time', percentile=0.33),
-            average_time=Percentile('cooking_time', percentile=0.66)
-        )
-        self.faster_time = int(times['faster_time'] or 0)
-        self.average_time = int(times['average_time'] or 0)
-        super().__init__(request, params, model, model_admin)
-
     def lookups(self, request, model_admin):
-        qs = model_admin.get_queryset(request)
-        faster_recipe_count = qs.filter(
-            cooking_time__lte=self.faster_time
+        recipes = model_admin.get_queryset(request)
+        cooking_time_list = np.array(
+            recipes.values_list('cooking_time', flat=True)
+        )
+        faster_time = int(np.percentile(cooking_time_list, 33))
+        average_time = int(np.percentile(cooking_time_list, 66))
+        self.time_ranges = {
+            'faster': [int(np.min(cooking_time_list)), faster_time],
+            'average': [faster_time, average_time],
+            'long': [average_time, int(np.max(cooking_time_list))]
+        }
+        faster_recipe_count = recipes.filter(
+            cooking_time__range=self.time_ranges['faster']
         ).count()
-        average_recipe_count = qs.filter(
-            cooking_time__range=[self.faster_time, self.average_time]
+        average_recipe_count = recipes.filter(
+            cooking_time__range=self.time_ranges['average']
         ).count()
-        long_recipe_cont = qs.filter(
-            cooking_time__gt=self.average_time
+        long_recipe_cont = recipes.filter(
+            cooking_time__range=self.time_ranges['long']
         ).count()
         return (
-            ('faster', _(
-                f'Быстро(до {self.faster_time} минут) ({faster_recipe_count})'
-            )),
-            ('average', _(
-                f'Средне (от {self.faster_time} до {self.average_time} минут) '
-                f'({average_recipe_count})'
-            )),
-            ('long', _(
-                f'Долго(больше {self.average_time} минут) ({long_recipe_cont})'
-            ))
+            (
+                'faster',
+                f'Быстро(до {average_time} минут) '
+                f'({faster_recipe_count})'
+            ),
+            (
+                'average',
+                f'Средне (от {average_time} до '
+                f'{average_time} минут) ({average_recipe_count})'
+            ),
+            (
+                'long',
+                f'Долго(больше {average_time} минут) '
+                f'({long_recipe_cont})'
+            )
         )
 
     def queryset(self, request, queryset):
-        if self.value() == 'faster':
-            return queryset.filter(cooking_time__lte=self.faster_time)
-        if self.value() == 'average':
+        if self.value() in self.time_ranges:
             return queryset.filter(
-                cooking_time__range=[self.faster_time, self.average_time]
+                cooking_time__range=self.time_ranges[self.value()]
             )
-        if self.value() == 'long':
-            return queryset.filter(cooking_time__gt=self.average_time)
+        return queryset
 
 
 class SubscriptionsInline(admin.StackedInline):
@@ -134,7 +141,7 @@ class RecipeInline(admin.TabularInline):
     @admin.display(description='текст')
     def short_text(self, recipe):
         """Отображение текста рецепта в списке сокращенно."""
-        return recipe.text[:50] + '...'
+        return recipe.text[:50]
 
     @admin.display(description='ингредиенты')
     def get_ingredients(self, recipe):
@@ -159,8 +166,26 @@ class RecipeIngredientInline(admin.TabularInline):
         return recipe_ingredient.ingredient.measurement_unit
 
 
+class BaseCountRecipesAdmin(admin.ModelAdmin):
+    """Общий базовый класс для UserAdmin, TagAdmin, IngredientAdmin.
+
+    Аннотирует queryset количеством рецептов.
+    Отражает количество рецептов связанных с объектом модели.
+    (Количество рецептов с заданным тегом/ингредиентом/userом).
+    """
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            count_recipes=Count('recipes'),
+        )
+
+    @admin.display(description='Рецептов')
+    def count_recipes(self, obj):
+        """Отображает количество рецептов."""
+        return obj.count_recipes
+
+
 @admin.register(User)
-class UserAdmin(UserAdmin):
+class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
@@ -180,7 +205,7 @@ class UserAdmin(UserAdmin):
         'username',
         'full_name',
         'email',
-        'recipes_count',
+        'count_recipes',
         'following_count',
         'followers_count'
     )
@@ -207,33 +232,27 @@ class UserAdmin(UserAdmin):
     )
 
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        return queryset.annotate(
-            count_recipes=Count('recipes', distinct=True),
+        return super().get_queryset(request).annotate(
             count_following=Count('subscriptions', distinct=True),
-            count_followers=Count('follower_subscriptions', distinct=True)
+            count_followers=Count('author_subscriptions', distinct=True)
         )
 
-    @admin.display(description='Количество рецептов')
-    def recipes_count(self, user):
-        """Отображение количество рецептов пользователя."""
-        return user.count_recipes
-
-    @admin.display(description='Количество подписчиков(following)')
+    @admin.display(description='Подписчиков')
     def following_count(self, user):
         """Отображение количества подписчиков пользователя."""
         return user.count_following
 
-    @admin.display(description='Количество подписавшихся(followers)')
+    @admin.display(description='Подписавшихся')
     def followers_count(self, user):
         """Отображение количества подписок на пользователя."""
         return user.count_followers
 
     @admin.display(description="Полное имя")
     def full_name(self, user):
-        """Отображает ФИО: irst_name+last_name."""
-        return f'{user.first_name} {user.last_name}'.upper()
+        """Отображает ФИО: first_name+last_name."""
+        return f'{user.first_name} {user.last_name}'
 
+    @admin.display(description='Аватар')
     @mark_safe
     def post_avatar(self, user):
         """Отображает аватар как картинку,
@@ -245,49 +264,25 @@ class UserAdmin(UserAdmin):
                 f'<img src="{user.avatar.url}" height="50" width="50" '
                 f'style="{style}" />'
             )
-        return 'Аватар не загружен'
-
-    post_avatar.short_description = 'Аватар'
+        return ''
 
 
 @admin.register(Ingredient)
-class IngredientAdmin(admin.ModelAdmin):
+class IngredientAdmin(BaseCountRecipesAdmin):
     list_display = ('id', 'name', 'measurement_unit', 'count_recipes')
     list_editable = ('measurement_unit',)
     search_fields = ('name',)
-    list_filter = ('measurement_unit',)
+    list_filter = ('measurement_unit', IsInRecipeListFilter)
     list_display_links = ('name',)
     ordering = ('name',)
 
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        return queryset.annotate(
-            count_ingredients=Count('recipes')
-        )
-
-    @admin.display(description='Рецептов с ингредиентом')
-    def count_recipes(self, ingredient):
-        """Отображение количества рецептов с заданным ингредиентом."""
-        return ingredient.count_ingredients
-
 
 @admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
+class TagAdmin(BaseCountRecipesAdmin):
     list_display = ('id', 'name', 'slug', 'count_recipes')
     list_editable = ('slug',)
     search_fields = ('name', 'slug')
     ordering = ('name',)
-
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        return queryset.annotate(
-            count_recipes=Count('recipes'),
-        )
-
-    @admin.display(description='Количество рецептов с тегом')
-    def count_recipes(self, tag):
-        """Отображение количество рецептов с тегом."""
-        return tag.count_recipes
 
 
 @admin.register(Recipe)
@@ -296,7 +291,7 @@ class RecipeAdmin(admin.ModelAdmin):
     list_display = (
         'post_image', 'id', 'name', 'author',
         'get_ingredients', 'get_tags',
-        'cooking_time_display',
+        'cooking_time',
         'recipes_count_in_favorites'
     )
     search_fields = (
@@ -310,24 +305,27 @@ class RecipeAdmin(admin.ModelAdmin):
     readonly_fields = ('recipes_count_in_favorites', 'post_image')
 
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        return queryset.prefetch_related(
+        return super().get_queryset(
+            request
+        ).prefetch_related(
             'tags', 'recipe_ingredients'
         ).annotate(
             count_favorites=Count('favorites'),
         )
 
     @admin.display(description='теги')
+    @mark_safe
     def get_tags(self, recipe):
         """Отображение тегов в столбик."""
-        return format_html(',<br>'.join(tag.name for tag in recipe.tags.all()))
+        return ('<br>'.join(tag.name for tag in recipe.tags.all()))
 
     @admin.display(description='ингредиенты')
+    @mark_safe
     def get_ingredients(self, recipe):
         """Отображение ингредиентов с количеством и единицей измерения.
         Все ингредиенты отображаются в столбик."""
-        return format_html(
-            ',<br>'.join(
+        return (
+            '<br>'.join(
                 f'{recipe_ingredient.ingredient.name} '
                 f'{recipe_ingredient.amount} '
                 f'{recipe_ingredient.ingredient.measurement_unit} '
@@ -340,6 +338,7 @@ class RecipeAdmin(admin.ModelAdmin):
         """Отображение количества добавлений рецепта в избранное."""
         return recipe.count_favorites
 
+    @admin.display(description='Картинка')
     @mark_safe
     def post_image(self, recipe):
         """Отображает картинку рецепта,
@@ -352,12 +351,10 @@ class RecipeAdmin(admin.ModelAdmin):
                 f'style="{style}" />'
             )
 
-    post_image.short_description = 'Картинка'
-
 
 class ShoppingCartFavoriteAdmin(admin.ModelAdmin):
     """Базовый класс от которого наследуют ShoppingCartAdmin и FavoriteAdmin"""
-    list_display = ('user', 'recipe')
+    list_display = ('id', 'user', 'recipe')
     list_display_links = ('user', 'recipe')
     search_fields = ('user__username', 'recipe__name')
     list_filter = ('user', 'recipe')

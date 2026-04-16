@@ -16,10 +16,18 @@ from django.core.management.base import BaseCommand, CommandError
 
 
 class BaseLoadDataCommand(BaseCommand):
-    def handle(self, *args, **kwargs):
-        file_path = os.path.join(
-            settings.BASE_DIR, 'data', f'{self.file_name}.json'
+    def add_arguments(self, parser):
+        parser.add_argument(
+            'file_path',
+            nargs='?',
+            type=str,
+            default=os.path.join(
+                settings.BASE_DIR, 'data', f'{self.file_name}.json'
+            )
         )
+
+    def handle(self, *args, **options):
+        file_path = options['file_path']
         try:
             with open(file_path, encoding='utf-8') as data:
                 self.stdout.write(
@@ -27,15 +35,18 @@ class BaseLoadDataCommand(BaseCommand):
                         f'Загрузка данных для модели {self.model.__name__}'
                     )
                 )
-                count = self.model.objects.bulk_create(
-                    (self.model(**object) for object in json.load(data)),
+                created_objects = self.model.objects.bulk_create(
+                    (self.model(**item_data) for item_data in json.load(data)),
                     ignore_conflicts=True
                 )
             self.stdout.write(
                 self.style.SUCCESS(
-                    f'Данные в количестве {len(count)} объектов '
-                    f'для модели {self.model.__name__} обработаны!'
+                    f'Загрузка данных из файла {file_path} '
+                    f'в модель {self.model.__name__} завершена. '
+                    f'Успешно обработанных объектов: {len(created_objects)}.'
                 )
             )
-        except FileNotFoundError:
-            raise CommandError(f'Файл {self.file_name}.json не найден')
+        except Exception as error:
+            raise CommandError(
+                f'Ошибка загрузки файла {file_path}: {error}'
+            )

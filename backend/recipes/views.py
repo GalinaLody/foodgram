@@ -1,4 +1,4 @@
-from django.http import Http404
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect
 
 from .models import Recipe
@@ -9,5 +9,4 @@ def redirect_to_recipe_url(request, recipe_id):
     на страницу рецепта."""
     if Recipe.objects.filter(id=recipe_id).exists():
         return redirect(f'/recipes/{recipe_id}')
-    else:
-        raise Http404('Рецепт не найден')
+    raise ValidationError(f'Рецепт с id={recipe_id} не найден')

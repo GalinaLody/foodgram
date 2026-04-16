@@ -63,7 +63,7 @@ class User(AbstractUser):
         verbose_name='Аватар'
     )
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
 
     class Meta:
         ordering = ('username',)
@@ -92,7 +92,7 @@ class Subscriptions(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name='На кого подписан',
-        related_name='follower_subscriptions'
+        related_name='author_subscriptions'
     )
 
     class Meta:
@@ -130,7 +130,6 @@ class Ingredient(models.Model):
 
     name = models.CharField(
         max_length=INGREDIENTS_NAME_MAX_LENGTH_CHARFIELD,
-        unique=True,
         verbose_name='Наименование'
     )
     measurement_unit = models.CharField(
@@ -151,7 +150,9 @@ class Ingredient(models.Model):
         )
 
     def __str__(self):
-        return self.name[:SLICE_OUTPUT_STR_METHOD]
+        return (
+            f'{self.name[:SLICE_OUTPUT_STR_METHOD]}: {self.measurement_unit}'
+        )
 
 
 class Tag(models.Model):
@@ -178,13 +179,6 @@ class Tag(models.Model):
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
         ordering = ('name',)
-        constraints = (
-            models.UniqueConstraint(
-                Lower('name'),
-                name='%(app_label)s_%(class)s_unique_name',
-                violation_error_message='Такой объект уже существует.'
-            ),
-        )
 
     def __str__(self):
         return self.name[:SLICE_OUTPUT_STR_METHOD]
@@ -246,13 +240,6 @@ class Recipe(models.Model):
         verbose_name_plural = 'Рецепты'
         default_related_name = 'recipes'
         ordering = ('-pub_date',)
-
-    @property
-    def cooking_time_display(self):
-        """Отображение время приготовления с минутами."""
-        return f'{self.cooking_time} мин'
-
-    cooking_time_display.fget.short_description = 'Время приготовления'
 
     def __str__(self):
         return self.name[:SLICE_OUTPUT_STR_METHOD]

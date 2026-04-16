@@ -123,7 +123,7 @@ REST_FRAMEWORK = {
 }
 
 AUTHENTICATION_BACKENDS = [
-    'api.users.backends.EmailAuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
 DJOSER = {
@@ -131,7 +131,6 @@ DJOSER = {
     # Указаны только переопределенные сериализаторы,
     # в остальном используются сериализаторы djoser по умолчанию.
     'SERIALIZERS': {
-        'user_create': 'api.users.serializers.UserCreateSerializer',
         'user': 'api.users.serializers.UserSerializer',
         'current_user': 'api.users.serializers.UserSerializer',
     },
@@ -140,4 +139,4 @@ DJOSER = {
 
 CSRF_TRUSTED_ORIGINS = [(os.getenv('CSRF'))]
 
-USERNAME_ALLOWED_SIGNS = r'[\w.@+-]'
+USERNAME_ALLOWED_SIGNS_PATTERN = r'[\w.@+-]'

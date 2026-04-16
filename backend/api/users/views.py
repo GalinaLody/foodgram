@@ -1,15 +1,14 @@
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from djoser.permissions import CurrentUserOrAdmin as DjoserCurrentUserOrAdmin
 from djoser.views import UserViewSet as DjoserUserViewSet
-from rest_framework import status
+from rest_framework import exceptions, status
 from rest_framework.decorators import action
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from api.users.serializers import AvatarSerializer, SubscribeSerializer
+from api.common.paginations import PageLimitPagination
+from api.users.serializers import AvatarSerializer, SubscriptionsSerializer
 from recipes.models import Subscriptions
 
 User = get_user_model()
@@ -32,17 +31,13 @@ class FoodgramUserViewSet(DjoserUserViewSet):
     миксина AddDeleteRelationMixin.
     """
 
-    pagination_class = LimitOffsetPagination
+    pagination_class = PageLimitPagination
     queryset = User.objects.all()
 
     def get_permissions(self):
-        """Переопределяет права доступа djoser для GET-запросов
-        к /users/ и /users/id/ на 'доступно для всех'
-        (было только для авторизованных)."""
-        permissions = super().get_permissions()
         if self.action in ('list', 'retrieve'):
             return (AllowAny(),)
-        return permissions
+        return super().get_permissions()
 
     @action(
         detail=False,
@@ -62,11 +57,12 @@ class FoodgramUserViewSet(DjoserUserViewSet):
     def delete_avatar(self, request):
         """Удаляет аватар пользователя"""
         user = self.request.user
-        if user.avatar:
-            user.avatar.delete(save=True)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        if not user.avatar:
+            raise exceptions.ValidationError(
+                f'У пользователя {user.username} нет аватара.'
+            )
+        user.avatar.delete(save=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
@@ -76,13 +72,16 @@ class FoodgramUserViewSet(DjoserUserViewSet):
     def subscriptions(self, request):
         """Выводит список подписок текущего пользователя
         по эндпоинту /subscriptions."""
-        obj = User.objects.filter(follower_subscriptions__user=request.user)
-        page = self.paginate_queryset(obj)
-        serializer = SubscribeSerializer(
-            page, many=True,
-            context={'request': self.request}
+        return self.get_paginated_response(
+            SubscriptionsSerializer(
+                self.paginate_queryset(
+                    User.objects.filter(
+                        author_subscriptions__user=request.user
+                    )
+                ), many=True,
+                context={'request': self.request}
+            ).data
         )
-        return self.get_paginated_response(serializer.data)
 
     @action(
         detail=True,
@@ -93,27 +92,31 @@ class FoodgramUserViewSet(DjoserUserViewSet):
         """Создает подписку текущего пользоватея на выбранного пользователя
         по эндпоинту /subscribe."""
         user = self.request.user
-        user_following = get_object_or_404(User, id=id)
-        try:
-            Subscriptions.objects.create(user=user, following=user_following)
-            return Response(
-                SubscribeSerializer(
-                    user_following,
-                    context={'request': self.request}
-                ).data,
-                status=status.HTTP_201_CREATED
+        author = get_object_or_404(User, id=id)
+        if user == author:
+            raise exceptions.ValidationError(
+                'Подписка на самого себя невозможна.'
             )
-        except IntegrityError:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        elif Subscriptions.objects.filter(
+            user=user, following=author
+        ).exists():
+            raise exceptions.ValidationError(
+                f'Подписка на пользователя{user.username} уже существует.'
+            )
+        Subscriptions.objects.create(user=user, following=author)
+        return Response(
+            SubscriptionsSerializer(
+                author,
+                context={'request': self.request}
+            ).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @subscribe.mapping.delete
-    def delete_subscribe(self, request, id):
-        """Удаляет подписку текущего пользоватея на другого пользователя
+    def delete_subscriptions(self, request, id):
+        """Удаляет подписку текущего пользователя на другого пользователя
         по эндпоинту /subscribe."""
-        user = self.request.user
-        deleted_count, __ = Subscriptions.objects.filter(
-            user=user, following_id=id
+        get_object_or_404(
+            Subscriptions, user=self.request.user, following_id=id
         ).delete()
-        if deleted_count == 0:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,33 +1,12 @@
 from django.contrib.auth import get_user_model
-from djoser.serializers import (
-    UserCreateSerializer as DjoserUserCreateSerializer,
-    UserSerializer as DjoserUserSerializer,
-)
+from djoser.serializers import UserSerializer as DjoserUserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-
-from recipes.models import Subscriptions
 
 User = get_user_model()
 
 
-class BaseUserSerializer(DjoserUserSerializer):
-    """Базовый сериалайзер модели пользователя.
-
-    Наследует от сериализатора djoser и включает поля
-    id, email, username и поля модели User, указанные в
-    REQUIRED_FIELDS() модели кастомной модели User
-    """
-
-
-class UserCreateSerializer(DjoserUserCreateSerializer):
-    """Кастомный сериализатор для создания пользователя.
-
-    Наследует от сериализатора djoser.
-    """
-
-
-class UserSerializer(BaseUserSerializer):
+class UserSerializer(DjoserUserSerializer):
     """Кастомный сериализатор пользователя.
 
     Используется для переопределения стандартных
@@ -36,20 +15,19 @@ class UserSerializer(BaseUserSerializer):
     добавляя поле 'avatar', 'is_subscribed'.
     """
 
-    avatar = Base64ImageField(required=False, allow_null=True)
-    is_subscribed = serializers.SerializerMethodField()
+    is_subscribed = serializers.SerializerMethodField(read_only=True)
 
-    class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + (
-            'avatar', 'is_subscribed'
-        )
+    class Meta(DjoserUserSerializer.Meta):
+        fields = [*DjoserUserSerializer.Meta.fields, 'avatar', 'is_subscribed']
+        read_only_fields = fields
 
     def get_is_subscribed(self, obj_user):
         """Получает значение поля is_subscribed, которого нет в модели."""
         request = self.context['request']
-        if request.user.is_anonymous:
-            return False
-        return request.user.subscriptions.filter(following=obj_user).exists()
+        return (
+            not request.user.is_anonymous
+            and request.user.subscriptions.filter(following=obj_user).exists()
+        )
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -65,8 +43,8 @@ class AvatarSerializer(serializers.ModelSerializer):
         fields = ('avatar',)
 
 
-class SubscribeSerializer(UserSerializer):
-    """Сериализатор для создания подписки.
+class SubscriptionsSerializer(UserSerializer):
+    """Сериализатор для работы с подписками пользователя.
 
     Наследует от сериализатора UserSerializer.
     Дополнительное поле recipes использует вложенный сериализатор
@@ -77,11 +55,12 @@ class SubscribeSerializer(UserSerializer):
     (используется для получения иформации для одного пользователя).
     """
 
-    recipes = serializers.SerializerMethodField()
+    recipes = serializers.SerializerMethodField(read_only=True)
     recipes_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta(UserSerializer.Meta):
-        fields = UserSerializer.Meta.fields + ('recipes', 'recipes_count')
+        fields = [*UserSerializer.Meta.fields, 'recipes', 'recipes_count']
+        read_only_fields = fields
 
     def get_recipes(self, user):
         """Получает поле recipes в формате ShortInfoRecipeSerializer.
@@ -89,11 +68,10 @@ class SubscribeSerializer(UserSerializer):
         возвращает ответ с указанным количестовм рецептов."""
         from api.recipes.serializers import ShortInfoRecipeSerializer
         request = self.context['request']
+        recipes = user.recipes.all()
         if request.query_params.get('recipes_limit'):
             recipes_limit = int(request.query_params.get('recipes_limit'))
-            recipes = user.recipes.all()[:recipes_limit]
-        else:
-            recipes = user.recipes.all()
+            recipes = recipes[:recipes_limit]
         return ShortInfoRecipeSerializer(
             recipes, many=True, context=self.context
         ).data
@@ -105,23 +83,3 @@ class SubscribeSerializer(UserSerializer):
             return user.recipes_count
         else:
             return user.recipes.count()
-
-    def validate_following(self, new_following):
-        """Проверка подписки на самого себя
-        и проверка повторной подписки на пользователя.
-        Проверяет, чтобы поле запроса following не совпадало с
-        с пользователем, отправившим запрос.
-        А также проверяет, чтобы пара user-following была уникальной
-        в модели Subscriptions."""
-        request = self.context['request']
-        if new_following == request.user:
-            raise serializers.ValidationError(
-                'Подписка на самого себя невозможна.'
-            )
-        if Subscriptions.objects.filter(
-            user=request.user, following=new_following
-        ).exists():
-            raise serializers.ValidationError(
-                'Повторная подписка на пользователя невозможна.'
-            )
-        return new_following

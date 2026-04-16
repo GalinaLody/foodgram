@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from api.common.filters import NameSearchFilterBackend
-from api.common.permissions import IsAuthorOrReadOnly
+from api.common.permissions import IsAuthorOrAnonymReadOnlyOrAuthenticCreate
 from api.recipes.filters import RecipeFilter
 from api.recipes.serializers import (
     ReadRecipeSerializer,
@@ -64,7 +64,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     """
 
     http_method_names = ('get', 'post', 'patch', 'delete')
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthorOrAnonymReadOnlyOrAuthenticCreate,)
     filter_backends = (DjangoFilterBackend,
                        filters.OrderingFilter)
     filterset_class = RecipeFilter

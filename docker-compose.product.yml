@@ -15,6 +15,3 @@ services:
   gateway:
     image: galinalody/foodgram_gateway
     env_file: .env
-
-
-    

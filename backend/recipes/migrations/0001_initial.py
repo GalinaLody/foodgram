@@ -150,7 +150,7 @@ class Migration(migrations.Migration):
             name='Subscriptions',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('following', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='follower_subscriptions', to=settings.AUTH_USER_MODEL, verbose_name='На кого подписан')),
+                ('following', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='author_subscriptions', to=settings.AUTH_USER_MODEL, verbose_name='На кого подписан')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='subscriptions', to=settings.AUTH_USER_MODEL, verbose_name='Пользователь')),
             ],
             options={

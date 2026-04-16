@@ -154,5 +154,3 @@ jobs:
             Ссылка на коммит:
             https://github.com/${{ github.repository }}/commit/${{github.sha}}
       
-
-

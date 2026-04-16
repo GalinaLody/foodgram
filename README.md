@@ -1,3 +1,4 @@
+[![Main Foodgram workflow](https://github.com/GalinaLody/foodgram/actions/workflows/main.yml/badge.svg)](https://github.com/GalinaLody/foodgram/actions/workflows/main.yml)
 ## Описание проекта.
 
 Foodgram - это проект в формате сайта рецептов с элементами соцальной сети, в которой пользователь может публиковать свои рецепты, добавлять чужие рецепты в избранное и подписываться на публикации других авторов. Зарегистрированным пользователям также доступен сервис «Список покупок». Он позволяет создавать список продуктов, которые нужно купить для приготовления выбранных блюд. Backend проекта основан на Rest API. Frontend проекта использует React.
@@ -84,8 +85,12 @@ npm run start
 
 После запуска открыть [сервер](http://localhost:3000) в браузере.
 Доступ к [Админке](http://localhost:3000/admin/).
-Доступ к [API-документации](http://localhost:3000/docs/)
 
+## Доступ к Api-документации.
+
+Открыть Api-документацию можно с использованием онлаин-редактора [Swagger](https://editor.swagger.io/)
+
+путем загрузки файла foodgram/docs/openapi-schema.yml
 
 ## Как запустить проект локально в контейнерах.
 
@@ -137,12 +142,6 @@ docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec bac
 docker compose -f docker-compose.common.yml -f docker-compose.local.yml exec backend python manage.py load_ingredients
 ```
 
-## Доступ к Api-документации.
-
-Открыть Api-документацию можно с использованием онлаин-редактора [Swagger](https://editor.swagger.io/)
-
-путем загрузки файла foodgram/docs/openapi-schema.yml
-
 ## Деплой на сервер.
 
 Необходимо клонировать репозиторий и перейти в него в командной строке:
@@ -153,12 +152,7 @@ git clone git@github.com:GalinaLody/foodgram.git
 cd foodgram
 
 ```
-Скопировать на сервер в одну директорию файлы docker-compose.common.yml и docker-compose.product.yml
-Из директории с файлами docker-compose.common.yml и docker-compose.product.yml выполнить команду:
 
-```
-scp -i path_to SSH/SSH_name docker-compose.common.yml docker-compose.product.yml username@server_ip:/home/username/ docker-compose.common.yml docker-compose.product.yml
-```
 Создать .env на сервере.
 
 Прописать GitHub Secrets:
@@ -170,11 +164,8 @@ scp -i path_to SSH/SSH_name docker-compose.common.yml docker-compose.product.yml
  - TELEGRAM_ID
  - TELEGRAM_TOKEN
 
-Загрузить проект на GitHub в главную ветку:
+Загрузить проект на GitHub в главную ветку.
 
-```
-git pull
-```
 При пуше в main запускается workflows, проверяется линтинг
 собираются Docker-образы, деплоится на сервер по SSH
 

@@ -1,6 +1,6 @@
 import numpy as np
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db.models import Count
 from django.utils.safestring import mark_safe
 
@@ -19,7 +19,7 @@ from .models import (
 class IsRelationFilter(admin.SimpleListFilter):
     """Базовый фильтр о наличии/отсутствии у пользователя связей."""
 
-    related_name = type[str]
+    related_name: str
     LOOKUP_CHOICES = (
         ('y', 'есть'),
         ('n', 'нет')
@@ -79,15 +79,22 @@ class CookingTimeListFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         recipes = model_admin.get_queryset(request)
-        cooking_time_list = np.array(
-            recipes.values_list('cooking_time', flat=True)
+        if recipes.values_list('cooking_time').distinct().count() <= 3:
+            return ()
+        cooking_time_edges = np.histogram_bin_edges(
+            recipes.values_list('cooking_time', flat=True),
+            bins=3
         )
-        faster_time = int(np.percentile(cooking_time_list, 33))
-        average_time = int(np.percentile(cooking_time_list, 66))
         self.time_ranges = {
-            'faster': [int(np.min(cooking_time_list)), faster_time],
-            'average': [faster_time, average_time],
-            'long': [average_time, int(np.max(cooking_time_list))]
+            'faster': [
+                round(cooking_time_edges[0]), round(cooking_time_edges[1])
+            ],
+            'average': [
+                round(cooking_time_edges[1]), round(cooking_time_edges[2])
+            ],
+            'long': [
+                round(cooking_time_edges[2]), round(cooking_time_edges[3])
+            ]
         }
         faster_recipe_count = recipes.filter(
             cooking_time__range=self.time_ranges['faster']
@@ -101,27 +108,28 @@ class CookingTimeListFilter(admin.SimpleListFilter):
         return (
             (
                 'faster',
-                f'Быстро(до {average_time} минут) '
+                f'Быстро(до {round(cooking_time_edges[1]) - 1} минут) '
                 f'({faster_recipe_count})'
             ),
             (
                 'average',
-                f'Средне (от {average_time} до '
-                f'{average_time} минут) ({average_recipe_count})'
+                f'Средне (от {round(cooking_time_edges[1])} до '
+                f'{round(cooking_time_edges[2]) - 1} минут) '
+                f'({average_recipe_count})'
             ),
             (
                 'long',
-                f'Долго(больше {average_time} минут) '
+                f'Долго(больше {round(cooking_time_edges[2])} минут) '
                 f'({long_recipe_cont})'
             )
         )
 
-    def queryset(self, request, queryset):
+    def queryset(self, request, recipes):
         if self.value() in self.time_ranges:
-            return queryset.filter(
+            return recipes.filter(
                 cooking_time__range=self.time_ranges[self.value()]
             )
-        return queryset
+        return recipes
 
 
 class SubscriptionsInline(admin.StackedInline):
@@ -166,13 +174,17 @@ class RecipeIngredientInline(admin.TabularInline):
         return recipe_ingredient.ingredient.measurement_unit
 
 
-class BaseCountRecipesAdmin(admin.ModelAdmin):
-    """Общий базовый класс для UserAdmin, TagAdmin, IngredientAdmin.
+class BaseCountRecipesAdminMixin:
+    """Общий миксин.
 
     Аннотирует queryset количеством рецептов.
     Отражает количество рецептов связанных с объектом модели.
     (Количество рецептов с заданным тегом/ингредиентом/userом).
     """
+
+    list_display = ('count_recipes',)
+    readonly_fields = ('count_recipes',)
+
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
             count_recipes=Count('recipes'),
@@ -185,7 +197,7 @@ class BaseCountRecipesAdmin(admin.ModelAdmin):
 
 
 @admin.register(User)
-class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
+class UserAdmin(BaseCountRecipesAdminMixin, BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
@@ -205,7 +217,7 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
         'username',
         'full_name',
         'email',
-        'count_recipes',
+        *BaseCountRecipesAdminMixin.list_display,
         'following_count',
         'followers_count'
     )
@@ -227,8 +239,10 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
     readonly_fields = (
-        'count_recipes', 'following_count',
-        'followers_count', 'post_avatar'
+        *BaseCountRecipesAdminMixin.readonly_fields,
+        'following_count',
+        'followers_count',
+        'post_avatar'
     )
 
     def get_queryset(self, request):
@@ -239,25 +253,19 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
 
     @admin.display(description='Подписчиков')
     def following_count(self, user):
-        """Отображение количества подписчиков пользователя."""
         return user.count_following
 
     @admin.display(description='Подписавшихся')
     def followers_count(self, user):
-        """Отображение количества подписок на пользователя."""
         return user.count_followers
 
     @admin.display(description="Полное имя")
     def full_name(self, user):
-        """Отображает ФИО: first_name+last_name."""
         return f'{user.first_name} {user.last_name}'
 
     @admin.display(description='Аватар')
     @mark_safe
     def post_avatar(self, user):
-        """Отображает аватар как картинку,
-        object-fit: cover - сохраняет пропорции картинки,
-        border-radius: 50%; - аватар в форме овала."""
         if user.avatar:
             style = 'object-fit: cover; border-radius: 50%;'  # noqa: E702
             return (
@@ -268,21 +276,33 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
 
 
 @admin.register(Ingredient)
-class IngredientAdmin(BaseCountRecipesAdmin):
-    list_display = ('id', 'name', 'measurement_unit', 'count_recipes')
+class IngredientAdmin(BaseCountRecipesAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'id',
+        'name',
+        'measurement_unit',
+        *BaseCountRecipesAdminMixin.list_display
+    )
     list_editable = ('measurement_unit',)
     search_fields = ('name',)
     list_filter = ('measurement_unit', IsInRecipeListFilter)
     list_display_links = ('name',)
     ordering = ('name',)
+    readonly_fields = (*BaseCountRecipesAdminMixin.readonly_fields,)
 
 
 @admin.register(Tag)
-class TagAdmin(BaseCountRecipesAdmin):
-    list_display = ('id', 'name', 'slug', 'count_recipes')
+class TagAdmin(BaseCountRecipesAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'id',
+        'name',
+        'slug',
+        *BaseCountRecipesAdminMixin.list_display
+    )
     list_editable = ('slug',)
     search_fields = ('name', 'slug')
     ordering = ('name',)
+    readonly_fields = (*BaseCountRecipesAdminMixin.readonly_fields,)
 
 
 @admin.register(Recipe)
@@ -292,16 +312,16 @@ class RecipeAdmin(admin.ModelAdmin):
         'post_image', 'id', 'name', 'author',
         'get_ingredients', 'get_tags',
         'cooking_time',
-        'recipes_count_in_favorites'
+        'recipes_count_in_favorites', 'pub_date'
     )
     search_fields = (
-        'author__username', 'name',
-        'ingredients__name', 'tags__name'
+        'author__username', 'author__email'
+        'name', 'ingredients__name', 'tags__name'
     )
-    list_filter = ('author', CookingTimeListFilter)
+    list_filter = ('author', 'tags', CookingTimeListFilter)
     list_display_links = ('author', 'name')
     filter_horizontal = ('tags',)
-    ordering = ('name',)
+    ordering = ('name', 'pub_date')
     readonly_fields = ('recipes_count_in_favorites', 'post_image')
 
     def get_queryset(self, request):
@@ -317,20 +337,18 @@ class RecipeAdmin(admin.ModelAdmin):
     @mark_safe
     def get_tags(self, recipe):
         """Отображение тегов в столбик."""
-        return ('<br>'.join(tag.name for tag in recipe.tags.all()))
+        return '<br>'.join(tag.name for tag in recipe.tags.all())
 
     @admin.display(description='ингредиенты')
     @mark_safe
     def get_ingredients(self, recipe):
         """Отображение ингредиентов с количеством и единицей измерения.
         Все ингредиенты отображаются в столбик."""
-        return (
-            '<br>'.join(
-                f'{recipe_ingredient.ingredient.name} '
-                f'{recipe_ingredient.amount} '
-                f'{recipe_ingredient.ingredient.measurement_unit} '
-                for recipe_ingredient in recipe.recipe_ingredients.all()
-            )
+        return '<br>'.join(
+            f'{recipe_ingredient.ingredient.name} '
+            f'{recipe_ingredient.amount} '
+            f'{recipe_ingredient.ingredient.measurement_unit} '
+            for recipe_ingredient in recipe.recipe_ingredients.all()
         )
 
     @admin.display(description='В избранном')
@@ -345,10 +363,9 @@ class RecipeAdmin(admin.ModelAdmin):
         object-fit: cover - сохраняет пропорции картинки,
         border-radius: 50%; - скругляет углы."""
         if recipe.image:
-            style = 'object-fit: cover; border-radius: 10%;'  # noqa: E702
             return (
                 f'<img src="{recipe.image.url}" height="50" width="50" '
-                f'style="{style}" />'
+                f'style="{'object-fit: cover; border-radius: 10%;'}" />'
             )
 
 

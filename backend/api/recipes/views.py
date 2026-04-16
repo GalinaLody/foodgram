@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from api.common.filters import NameSearchFilterBackend
-from api.common.permissions import IsAuthorOrAnonymReadOnlyOrAuthenticCreate
+from api.common.permissions import IsAuthorOrReadOnly
 from api.recipes.filters import RecipeFilter
 from api.recipes.serializers import (
     ReadRecipeSerializer,
@@ -64,7 +64,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
     """
 
     http_method_names = ('get', 'post', 'patch', 'delete')
-    permission_classes = (IsAuthorOrAnonymReadOnlyOrAuthenticCreate,)
+    permission_classes = (
+        permissions.IsAuthenticatedOrReadOnly,
+        IsAuthorOrReadOnly,
+    )
     filter_backends = (DjangoFilterBackend,
                        filters.OrderingFilter)
     filterset_class = RecipeFilter
@@ -139,9 +142,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ).annotate(
             total_amount=Sum('amount')
         ).order_by('ingredient__name')
-        shopping_cart_text = create_shopping_cart_text(ingredients, recipes)
         return FileResponse(
-            shopping_cart_text,
+            create_shopping_cart_text(ingredients, recipes),
             as_attachment=True,
             filename='shopping_cart.txt'
         )
@@ -149,7 +151,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def add_relation(self, model, pk):
         user = self.request.user
         recipe = get_object_or_404(Recipe, id=pk)
-        if model.objects.filter(user=user, recipe=recipe).exists():
+        _, created = model.objects.get_or_create(user=user, recipe=recipe)
+        if not created:
             raise exceptions.ValidationError(
                 f'Такой объект модели {model} уже существует.'
             )

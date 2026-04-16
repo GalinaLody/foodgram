@@ -35,7 +35,7 @@ class BaseLoadDataCommand(BaseCommand):
                         f'Загрузка данных для модели {self.model.__name__}'
                     )
                 )
-                created_objects = self.model.objects.bulk_create(
+                created = self.model.objects.bulk_create(
                     (self.model(**item_data) for item_data in json.load(data)),
                     ignore_conflicts=True
                 )
@@ -43,7 +43,7 @@ class BaseLoadDataCommand(BaseCommand):
                 self.style.SUCCESS(
                     f'Загрузка данных из файла {file_path} '
                     f'в модель {self.model.__name__} завершена. '
-                    f'Успешно обработанных объектов: {len(created_objects)}.'
+                    f'Успешно добавленных объектов: {len(created)}.'
                 )
             )
         except Exception as error:

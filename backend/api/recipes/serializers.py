@@ -111,12 +111,11 @@ class ReadRecipeSerializer(serializers.ModelSerializer):
                                         name_field, model):
         """Общий метод получения вычисляемых полей
         is_favorited и is_in_shopping_cart."""
-        if hasattr(recipe, name_field):
-            return getattr(recipe, name_field)
         request = self.context['request']
         user = request.user
         return (
-            user.is_authenticated
+            hasattr(recipe, name_field) and getattr(recipe, name_field)
+            or user.is_authenticated
             and model.objects.filter(user=user, recipe=recipe).exists()
         )
 
@@ -225,13 +224,10 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, recipe, validated_data):
-        ingredients = validated_data.pop('ingredients', None)
-        if ingredients is None:
-            raise serializers.ValidationError(
-                'Поле ингредиенты не может быть пустым.'
-            )
         recipe.recipe_ingredients.all().delete()
-        self.create_relations_recipe_ingredient(recipe, ingredients)
+        self.create_relations_recipe_ingredient(
+            recipe, validated_data.pop('ingredients', None)
+        )
         return super().update(recipe, validated_data)
 
     def to_representation(self, instance):

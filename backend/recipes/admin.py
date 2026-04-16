@@ -365,7 +365,7 @@ class RecipeAdmin(admin.ModelAdmin):
         if recipe.image:
             return (
                 f'<img src="{recipe.image.url}" height="50" width="50" '
-                f'style="{'object-fit: cover; border-radius: 10%;'}" />'
+                f'style="object-fit: cover; border-radius: 10%;" />'
             )
 
 

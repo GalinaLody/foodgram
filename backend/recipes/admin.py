@@ -205,7 +205,7 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
         'username',
         'full_name',
         'email',
-        'recipes_count',
+        'count_recipes',
         'following_count',
         'followers_count'
     )
@@ -227,7 +227,7 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
     readonly_fields = (
-        'recipes_count', 'following_count',
+        'count_recipes', 'following_count',
         'followers_count', 'post_avatar'
     )
 

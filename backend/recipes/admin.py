@@ -205,7 +205,7 @@ class UserAdmin(UserAdmin, BaseCountRecipesAdmin):
         'username',
         'full_name',
         'email',
-        'count_recipes',
+        'recipes_count',
         'following_count',
         'followers_count'
     )

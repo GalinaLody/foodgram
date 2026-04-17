@@ -238,7 +238,7 @@ class UserAdmin(CountRecipesMixin, BaseUserAdmin):
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
     readonly_fields = (
-        'post_avatar'
+        'post_avatar',
     )
 
     def get_queryset(self, request):

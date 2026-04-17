@@ -12,10 +12,9 @@ def check_username(username):
     и исключает значение 'me' как допустимое значение поля username.
     """
 
-    incorrect_characters = re.sub(
+    if incorrect_characters := re.sub(
         settings.USERNAME_ALLOWED_SIGNS_PATTERN, '', username
-    )
-    if incorrect_characters:
+    ):
         raise ValidationError(
             'Некорректные символы в '
             'имени пользователя:{}'.format("".join(set(incorrect_characters)))

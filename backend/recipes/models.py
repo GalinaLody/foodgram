@@ -223,7 +223,7 @@ class Recipe(models.Model):
                 )
             ),
         ),
-        verbose_name='Время (мин.)'
+        verbose_name='Время(мин.)'
     )
     image = models.ImageField(
         upload_to='recipies/',

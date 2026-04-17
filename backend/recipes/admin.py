@@ -303,7 +303,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'post_image', 'id', 'name', 'author',
         'get_ingredients', 'get_tags',
         'cooking_time',
-        'recipes_count_in_favorites', 'pub_date'
+        'recipes_count_in_favorites'
     )
     search_fields = (
         'author__username', 'author__email'

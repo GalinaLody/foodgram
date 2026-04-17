@@ -4,5 +4,5 @@
 {% endfor %}
 
 Рецепты:
-{% for recipe in recipes %}— {{ recipe.name }} (@{{ recipe.author.username }})
+{% for recipe in recipes %}— {{ recipe.name }} (@{{ recipe.author.username }}){% for tag in recipe.tags.all %}#{{ tag.name }} {% endfor %}
 {% endfor %}

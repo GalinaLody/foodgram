@@ -204,11 +204,6 @@ class Recipe(models.Model):
     text = models.TextField(
         verbose_name='Описание'
     )
-    image = models.ImageField(
-        upload_to='recipies/',
-        null=True,
-        verbose_name='Изображение'
-    )
     ingredients = models.ManyToManyField(
         Ingredient,
         through='RecipeIngredient',
@@ -228,7 +223,12 @@ class Recipe(models.Model):
                 )
             ),
         ),
-        verbose_name='Время приготовления (мин.)'
+        verbose_name='Время (мин.)'
+    )
+    image = models.ImageField(
+        upload_to='recipies/',
+        null=True,
+        verbose_name='Изображение'
     )
     pub_date = models.DateTimeField(
         'Дата публикации',
@@ -279,8 +279,8 @@ class RecipeIngredient(models.Model):
 
     class Meta:
         default_related_name = 'recipe_ingredients'
-        verbose_name = 'Ингредиент рецепта'
-        verbose_name_plural = 'Ингредиенты рецепта'
+        verbose_name = 'Ингредиенты в рецепте'
+        verbose_name_plural = 'Ингредиенты в рецептах'
 
     def __str__(self):
         return f'{self.recipe} {self.ingredient}'

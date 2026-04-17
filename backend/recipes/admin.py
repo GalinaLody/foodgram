@@ -1,7 +1,9 @@
 import numpy as np
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import Group
 from django.db.models import Count
+from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from .models import (
@@ -21,7 +23,7 @@ class IsRelationFilter(admin.SimpleListFilter):
 
     related_name = None
     LOOKUP_CHOICES = (
-        ('y', 'есть'),
+        ('y', 'Да'),
         ('n', 'нет')
     )
 
@@ -81,9 +83,9 @@ class CookingTimeListFilter(admin.SimpleListFilter):
         recipes = model_admin.get_queryset(request)
         if recipes.values_list('cooking_time').distinct().count() <= 3:
             return ()
-        cooking_time_edges = np.histogram_bin_edges(
+        cooking_time_edges = np.percentile(
             recipes.values_list('cooking_time', flat=True),
-            bins=3
+            (0, 33, 66, 100)
         )
         self.time_ranges = {
             'faster': [
@@ -96,31 +98,19 @@ class CookingTimeListFilter(admin.SimpleListFilter):
                 round(cooking_time_edges[2]), round(cooking_time_edges[3])
             ]
         }
-        faster_recipe_count = recipes.filter(
-            cooking_time__range=self.time_ranges['faster']
-        ).count()
-        average_recipe_count = recipes.filter(
-            cooking_time__range=self.time_ranges['average']
-        ).count()
-        long_recipe_cont = recipes.filter(
-            cooking_time__range=self.time_ranges['long']
-        ).count()
         return (
             (
                 'faster',
                 f'Быстро(до {round(cooking_time_edges[1]) - 1} минут) '
-                f'({faster_recipe_count})'
             ),
             (
                 'average',
                 f'Средне (от {round(cooking_time_edges[1])} до '
                 f'{round(cooking_time_edges[2]) - 1} минут) '
-                f'({average_recipe_count})'
             ),
             (
                 'long',
                 f'Долго(больше {round(cooking_time_edges[2])} минут) '
-                f'({long_recipe_cont})'
             )
         )
 
@@ -183,6 +173,7 @@ class CountRecipesMixin:
     """
 
     list_display = ('count_recipes',)
+    recipe_filter_field = None
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
@@ -192,11 +183,17 @@ class CountRecipesMixin:
     @admin.display(description='Рецептов')
     def count_recipes(self, obj):
         """Отображает количество рецептов."""
-        return obj.count_recipes
+        count = obj.count_recipes
+        url = (
+            reverse('admin:recipes_recipe_changelist')
+            + f'?{self.recipe_filter_field}={obj.id}'
+        )
+        return mark_safe(f'<a href="{url}">{count}</a>')
 
 
 @admin.register(User)
 class UserAdmin(CountRecipesMixin, BaseUserAdmin):
+    recipe_filter_field = 'author__id__exact'
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
@@ -247,7 +244,7 @@ class UserAdmin(CountRecipesMixin, BaseUserAdmin):
             count_followers=Count('author_subscriptions', distinct=True)
         )
 
-    @admin.display(description='Подписчиков')
+    @admin.display(description='Подписок')
     def following_count(self, user):
         return user.count_following
 
@@ -279,7 +276,6 @@ class IngredientAdmin(CountRecipesMixin, admin.ModelAdmin):
         'measurement_unit',
         *CountRecipesMixin.list_display
     )
-    list_editable = ('measurement_unit',)
     search_fields = ('name',)
     list_filter = ('measurement_unit', IsInRecipeListFilter)
     list_display_links = ('name',)
@@ -288,6 +284,7 @@ class IngredientAdmin(CountRecipesMixin, admin.ModelAdmin):
 
 @admin.register(Tag)
 class TagAdmin(CountRecipesMixin, admin.ModelAdmin):
+    recipe_filter_field = 'tags__id__exact'
     list_display = (
         'id',
         'name',
@@ -316,7 +313,7 @@ class RecipeAdmin(admin.ModelAdmin):
     list_display_links = ('author', 'name')
     filter_horizontal = ('tags',)
     ordering = ('name', 'pub_date')
-    readonly_fields = ('recipes_count_in_favorites', 'post_image')
+    readonly_fields = ('post_image', 'recipes_count_in_favorites',)
 
     def get_queryset(self, request):
         return super().get_queryset(
@@ -326,6 +323,18 @@ class RecipeAdmin(admin.ModelAdmin):
         ).annotate(
             count_favorites=Count('favorites'),
         )
+
+    @admin.display(description='Картинка')
+    @mark_safe
+    def post_image(self, recipe):
+        """Отображает картинку рецепта,
+        object-fit: cover - сохраняет пропорции картинки,
+        border-radius: 50%; - скругляет углы."""
+        if recipe.image:
+            return (
+                f'<img src="{recipe.image.url}" height="50" width="50" '
+                f'style="object-fit: cover; border-radius: 10%;" />'
+            )
 
     @admin.display(description='теги')
     @mark_safe
@@ -349,18 +358,6 @@ class RecipeAdmin(admin.ModelAdmin):
     def recipes_count_in_favorites(self, recipe):
         """Отображение количества добавлений рецепта в избранное."""
         return recipe.count_favorites
-
-    @admin.display(description='Картинка')
-    @mark_safe
-    def post_image(self, recipe):
-        """Отображает картинку рецепта,
-        object-fit: cover - сохраняет пропорции картинки,
-        border-radius: 50%; - скругляет углы."""
-        if recipe.image:
-            return (
-                f'<img src="{recipe.image.url}" height="50" width="50" '
-                f'style="object-fit: cover; border-radius: 10%;" />'
-            )
 
 
 class ShoppingCartFavoriteAdmin(admin.ModelAdmin):
@@ -392,4 +389,15 @@ class SubscriptionsAdmin(admin.ModelAdmin):
     ordering = ('user__username',)
 
 
-admin.site.empty_value_display = 'Информация не задана'
+@admin.register(RecipeIngredient)
+class RecipeIngredientAdmin(admin.ModelAdmin):
+    list_display = ('id', 'recipe', 'ingredient', 'amount')
+    search_fields = ('recipe__name', 'ingredient__name')
+    list_display_links = ('recipe', 'ingredient')
+    autocomplete_fields = ('recipe', 'ingredient')
+    ordering = ('recipe',)
+
+
+admin.site.empty_value_display = ''
+
+admin.site.unregister(Group)

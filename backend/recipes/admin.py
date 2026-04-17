@@ -101,12 +101,12 @@ class CookingTimeListFilter(admin.SimpleListFilter):
         return (
             (
                 'faster',
-                f'Быстро(до {round(cooking_time_edges[1]) - 1} минут) '
+                f'Быстро(до {round(cooking_time_edges[1])} минут) '
             ),
             (
                 'average',
                 f'Средне (от {round(cooking_time_edges[1])} до '
-                f'{round(cooking_time_edges[2]) - 1} минут) '
+                f'{round(cooking_time_edges[2])} минут) '
             ),
             (
                 'long',
@@ -184,6 +184,8 @@ class CountRecipesMixin:
     def count_recipes(self, obj):
         """Отображает количество рецептов."""
         count = obj.count_recipes
+        if self.recipe_filter_field is None:
+            return count
         url = (
             reverse('admin:recipes_recipe_changelist')
             + f'?{self.recipe_filter_field}={obj.id}'
@@ -291,7 +293,6 @@ class TagAdmin(CountRecipesMixin, admin.ModelAdmin):
         'slug',
         *CountRecipesMixin.list_display
     )
-    list_editable = ('slug',)
     search_fields = ('name', 'slug')
     ordering = ('name',)
 

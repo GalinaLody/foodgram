@@ -154,9 +154,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         _, created = model.objects.get_or_create(user=user, recipe=recipe)
         if not created:
             raise exceptions.ValidationError(
-                f'Такой объект модели {model} уже существует.'
+                f'Рецепт {recipe.name} '
+                f'в модели {model.meta.verbose_name} уже существует.'
             )
-        model.objects.create(user=user, recipe=recipe)
         return Response(
             ShortInfoRecipeSerializer(
                 recipe, context={'request': self.request}

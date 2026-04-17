@@ -19,7 +19,7 @@ from .models import (
 class IsRelationFilter(admin.SimpleListFilter):
     """Базовый фильтр о наличии/отсутствии у пользователя связей."""
 
-    related_name: str
+    related_name = None
     LOOKUP_CHOICES = (
         ('y', 'есть'),
         ('n', 'нет')
@@ -174,7 +174,7 @@ class RecipeIngredientInline(admin.TabularInline):
         return recipe_ingredient.ingredient.measurement_unit
 
 
-class BaseCountRecipesAdminMixin:
+class CountRecipesMixin:
     """Общий миксин.
 
     Аннотирует queryset количеством рецептов.
@@ -183,7 +183,6 @@ class BaseCountRecipesAdminMixin:
     """
 
     list_display = ('count_recipes',)
-    readonly_fields = ('count_recipes',)
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
@@ -197,7 +196,7 @@ class BaseCountRecipesAdminMixin:
 
 
 @admin.register(User)
-class UserAdmin(BaseCountRecipesAdminMixin, BaseUserAdmin):
+class UserAdmin(CountRecipesMixin, BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Персональная информация', {'fields': (
@@ -217,7 +216,7 @@ class UserAdmin(BaseCountRecipesAdminMixin, BaseUserAdmin):
         'username',
         'full_name',
         'email',
-        *BaseCountRecipesAdminMixin.list_display,
+        *CountRecipesMixin.list_display,
         'following_count',
         'followers_count'
     )
@@ -239,9 +238,6 @@ class UserAdmin(BaseCountRecipesAdminMixin, BaseUserAdmin):
     ordering = ('username',)
     inlines = (SubscriptionsInline, RecipeInline)
     readonly_fields = (
-        *BaseCountRecipesAdminMixin.readonly_fields,
-        'following_count',
-        'followers_count',
         'post_avatar'
     )
 
@@ -276,33 +272,31 @@ class UserAdmin(BaseCountRecipesAdminMixin, BaseUserAdmin):
 
 
 @admin.register(Ingredient)
-class IngredientAdmin(BaseCountRecipesAdminMixin, admin.ModelAdmin):
+class IngredientAdmin(CountRecipesMixin, admin.ModelAdmin):
     list_display = (
         'id',
         'name',
         'measurement_unit',
-        *BaseCountRecipesAdminMixin.list_display
+        *CountRecipesMixin.list_display
     )
     list_editable = ('measurement_unit',)
     search_fields = ('name',)
     list_filter = ('measurement_unit', IsInRecipeListFilter)
     list_display_links = ('name',)
     ordering = ('name',)
-    readonly_fields = (*BaseCountRecipesAdminMixin.readonly_fields,)
 
 
 @admin.register(Tag)
-class TagAdmin(BaseCountRecipesAdminMixin, admin.ModelAdmin):
+class TagAdmin(CountRecipesMixin, admin.ModelAdmin):
     list_display = (
         'id',
         'name',
         'slug',
-        *BaseCountRecipesAdminMixin.list_display
+        *CountRecipesMixin.list_display
     )
     list_editable = ('slug',)
     search_fields = ('name', 'slug')
     ordering = ('name',)
-    readonly_fields = (*BaseCountRecipesAdminMixin.readonly_fields,)
 
 
 @admin.register(Recipe)

@@ -164,10 +164,6 @@ cd foodgram
  - TELEGRAM_ID
  - TELEGRAM_TOKEN
 
-Загрузить проект на GitHub в главную ветку.
-
-При пуше в main запускается workflows, проверяется линтинг
-собираются Docker-образы, деплоится на сервер по SSH
 
 ## Доступы.
 

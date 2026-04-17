@@ -17,8 +17,8 @@ def check_username(username):
     )
     if incorrect_characters:
         raise ValidationError(
-            f'Некорректные символы в '
-            f'имени пользователя:{"".join(set(incorrect_characters))}'
+            'Некорректные символы в '
+            'имени пользователя:{}'.format("".join(set(incorrect_characters)))
         )
 
     return username

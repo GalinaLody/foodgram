@@ -43,7 +43,7 @@ class BaseLoadDataCommand(BaseCommand):
                 self.style.SUCCESS(
                     f'Загрузка данных из файла {file_path} '
                     f'в модель {self.model.__name__} завершена. '
-                    f'Успешно добавленных объектов: {len(created)}.'
+                    f'Добавленно объектов: {len(created)}.'
                 )
             )
         except Exception as error:

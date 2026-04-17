@@ -89,10 +89,10 @@ class CookingTimeListFilter(admin.SimpleListFilter):
         )
         self.time_ranges = {
             'faster': [
-                round(cooking_time_edges[0]), round(cooking_time_edges[1])
+                round(cooking_time_edges[0]), round(cooking_time_edges[1] - 1)
             ],
             'average': [
-                round(cooking_time_edges[1]), round(cooking_time_edges[2])
+                round(cooking_time_edges[1]), round(cooking_time_edges[2] - 1)
             ],
             'long': [
                 round(cooking_time_edges[2]), round(cooking_time_edges[3])
